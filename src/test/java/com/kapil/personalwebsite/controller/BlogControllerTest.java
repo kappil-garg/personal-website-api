@@ -1,7 +1,7 @@
 package com.kapil.personalwebsite.controller;
 
 import com.kapil.personalwebsite.entity.Blog;
-import com.kapil.personalwebsite.service.BlogService;
+import com.kapil.personalwebsite.service.blog.BlogAdminService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -19,7 +19,7 @@ import static org.mockito.Mockito.when;
 class BlogControllerTest {
 
     @Mock
-    private BlogService blogService;
+    private BlogAdminService blogAdminService;
 
     @InjectMocks
     private BlogController blogController;
@@ -29,7 +29,7 @@ class BlogControllerTest {
         Blog blog1 = new Blog("Test Blog 1", "Content 1", "test-blog-1");
         Blog blog2 = new Blog("Test Blog 2", "Content 2", "test-blog-2");
         List<Blog> blogs = Arrays.asList(blog1, blog2);
-        when(blogService.getAllBlogs()).thenReturn(blogs);
+        when(blogAdminService.getAllBlogs()).thenReturn(blogs);
         var response = blogController.getAllBlogs();
         assertNotNull(response);
         assertNotNull(response.getBody());
@@ -40,7 +40,7 @@ class BlogControllerTest {
     @Test
     void getBlogBySlug_WhenBlogExists_ShouldReturnBlog() {
         Blog blog = new Blog("Test Blog", "Test Content", "test-blog");
-        when(blogService.getBlogBySlug("test-blog")).thenReturn(Optional.of(blog));
+        when(blogAdminService.getBlogBySlug("test-blog")).thenReturn(Optional.of(blog));
         var response = blogController.getBlogBySlug("test-blog");
         assertNotNull(response);
         assertNotNull(response.getBody());
@@ -49,7 +49,7 @@ class BlogControllerTest {
 
     @Test
     void getBlogBySlug_WhenBlogNotFound_ShouldReturn404() {
-        when(blogService.getBlogBySlug("non-existent")).thenReturn(Optional.empty());
+        when(blogAdminService.getBlogBySlug("non-existent")).thenReturn(Optional.empty());
         var response = blogController.getBlogBySlug("non-existent");
         assertNotNull(response);
         assertNull(response.getBody());

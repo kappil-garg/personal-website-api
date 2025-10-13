@@ -1,8 +1,9 @@
-package com.kapil.personalwebsite.service.impl;
+package com.kapil.personalwebsite.service.blog.impl;
 
 import com.kapil.personalwebsite.entity.Blog;
+import com.kapil.personalwebsite.entity.BlogStatus;
 import com.kapil.personalwebsite.repository.BlogRepository;
-import com.kapil.personalwebsite.service.BlogService;
+import com.kapil.personalwebsite.service.blog.BlogAdminService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -12,7 +13,8 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Service implementation for managing Blog entities.
+ * Implementation of BlogAdminService for blog administration operations.
+ * Provides full CRUD operations and blog lifecycle management.
  *
  * @author Kapil Garg
  */
@@ -20,24 +22,24 @@ import java.util.Optional;
 @Service
 @Transactional
 @RequiredArgsConstructor
-public class BlogServiceImpl implements BlogService {
+public class BlogAdminServiceImpl implements BlogAdminService {
 
     private final BlogRepository blogRepository;
 
     /**
-     * Retrieves all active blogs ordered by creation date in descending order.
+     * Retrieves all blogs, including drafts and archived.
      *
-     * @return a list of all active blogs
+     * @return a list of all blogs ordered by creation date (newest first)
      */
     @Override
     @Transactional(readOnly = true)
     public List<Blog> getAllBlogs() {
-        log.info("Fetching all active blogs");
+        log.info("Fetching all blogs for admin access");
         return blogRepository.findByIsActiveTrueOrderByCreatedAtDesc();
     }
 
     /**
-     * Retrieves a blog by its slug.
+     * Retrieves a blog by its slug, regardless of its status.
      *
      * @param slug the slug of the blog
      * @return an Optional containing the blog if found, or empty if not found
@@ -50,7 +52,7 @@ public class BlogServiceImpl implements BlogService {
     }
 
     /**
-     * Retrieves a blog by its ID.
+     * Retrieves a blog by its ID, regardless of its status.
      *
      * @param id the ID of the blog
      * @return an Optional containing the blog if found, or empty if not found
@@ -75,6 +77,9 @@ public class BlogServiceImpl implements BlogService {
         if (blogRepository.existsBySlug(blog.getSlug())) {
             throw new IllegalArgumentException("Blog with slug '" + blog.getSlug() + "' already exists");
         }
+        if (blog.getReadingTime() == null) {
+            blog.setReadingTime(blog.calculateReadingTime());
+        }
         return blogRepository.save(blog);
     }
 
@@ -90,9 +95,7 @@ public class BlogServiceImpl implements BlogService {
         log.info("Updating blog: {}", id);
         return blogRepository.findByIdAndIsActiveTrue(id)
                 .map(existingBlog -> {
-                    existingBlog.setTitle(blogDetails.getTitle());
-                    existingBlog.setContent(blogDetails.getContent());
-                    existingBlog.setSlug(blogDetails.getSlug());
+                    updateBlogFields(existingBlog, blogDetails);
                     return blogRepository.save(existingBlog);
                 });
     }
@@ -113,6 +116,58 @@ public class BlogServiceImpl implements BlogService {
                     return true;
                 })
                 .orElse(false);
+    }
+
+    /**
+     * Publishes a blog by setting its status to PUBLISHED.
+     *
+     * @param id the ID of the blog to publish
+     * @return an Optional containing the published blog if found, or empty if not found
+     */
+    @Override
+    public Optional<Blog> publishBlog(String id) {
+        log.info("Publishing blog: {}", id);
+        return blogRepository.findByIdAndIsActiveTrue(id)
+                .map(blog -> {
+                    blog.publish();
+                    return blogRepository.save(blog);
+                });
+    }
+
+    /**
+     * Unpublishes a blog by setting its status to DRAFT.
+     *
+     * @param id the ID of the blog to unpublish
+     * @return an Optional containing the unpublished blog if found, or empty if not found
+     */
+    @Override
+    public Optional<Blog> unpublishBlog(String id) {
+        log.info("Unpublishing blog: {}", id);
+        return blogRepository.findByIdAndIsActiveTrue(id)
+                .map(blog -> {
+                    blog.setStatus(BlogStatus.DRAFT);
+                    blog.setPublishedAt(null);
+                    return blogRepository.save(blog);
+                });
+    }
+
+    /**
+     * Updates the fields of an existing blog with the provided details.
+     *
+     * @param existingBlog the existing blog to update
+     * @param blogDetails  the new blog details
+     */
+    private void updateBlogFields(Blog existingBlog, Blog blogDetails) {
+        existingBlog.setTitle(blogDetails.getTitle());
+        existingBlog.setContent(blogDetails.getContent());
+        existingBlog.setSlug(blogDetails.getSlug());
+        existingBlog.setExcerpt(blogDetails.getExcerpt());
+        existingBlog.setFeaturedImage(blogDetails.getFeaturedImage());
+        if (blogDetails.getContent() != null && !blogDetails.getContent().equals(existingBlog.getContent())) {
+            existingBlog.setReadingTime(existingBlog.calculateReadingTime());
+        } else if (blogDetails.getReadingTime() != null) {
+            existingBlog.setReadingTime(blogDetails.getReadingTime());
+        }
     }
 
 }

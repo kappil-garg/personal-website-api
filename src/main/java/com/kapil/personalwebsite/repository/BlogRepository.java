@@ -1,6 +1,7 @@
 package com.kapil.personalwebsite.repository;
 
 import com.kapil.personalwebsite.entity.Blog;
+import com.kapil.personalwebsite.entity.BlogStatus;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 
@@ -45,5 +46,31 @@ public interface BlogRepository extends MongoRepository<Blog, String> {
      * @return true if a blog with the given slug exists, false otherwise
      */
     boolean existsBySlug(String slug);
+
+    /**
+     * Finds all published blogs ordered by published date in descending order.
+     *
+     * @param status the blog status
+     * @return list of published blogs
+     */
+    List<Blog> findByStatusAndIsActiveTrueOrderByPublishedAtDesc(BlogStatus status);
+
+    /**
+     * Finds a published blog by its slug.
+     *
+     * @param slug   the slug of the blog
+     * @param status the blog status
+     * @return an Optional containing the published blog if found, or empty if not found
+     */
+    Optional<Blog> findBySlugAndStatusAndIsActiveTrue(String slug, BlogStatus status);
+
+    /**
+     * Finds a published blog by its ID.
+     *
+     * @param id     the ID of the blog
+     * @param status the blog status
+     * @return an Optional containing the published blog if found, or empty if not found
+     */
+    Optional<Blog> findByIdAndStatusAndIsActiveTrue(String id, BlogStatus status);
 
 }
