@@ -4,7 +4,8 @@ import com.kapil.personalwebsite.entity.Blog;
 import com.kapil.personalwebsite.repository.BlogRepository;
 import com.kapil.personalwebsite.service.blog.BlogAnalyticsService;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,11 +17,12 @@ import java.util.Optional;
  *
  * @author Kapil Garg
  */
-@Slf4j
 @Service
 @Transactional
 @RequiredArgsConstructor
 public class BlogAnalyticsServiceImpl implements BlogAnalyticsService {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(BlogAnalyticsServiceImpl.class);
 
     private final BlogRepository blogRepository;
 
@@ -32,7 +34,7 @@ public class BlogAnalyticsServiceImpl implements BlogAnalyticsService {
      */
     @Override
     public Optional<Blog> incrementViewCount(String id) {
-        log.info("Incrementing view count for blog: {}", id);
+        LOGGER.info("Incrementing view count for blog: {}", id);
         return blogRepository.findByIdAndIsActiveTrue(id)
                 .map(blog -> {
                     blog.incrementViewCount();
@@ -49,7 +51,7 @@ public class BlogAnalyticsServiceImpl implements BlogAnalyticsService {
     @Override
     @Transactional(readOnly = true)
     public Optional<Blog> getViewCount(String id) {
-        log.info("Getting view count for blog: {}", id);
+        LOGGER.info("Getting view count for blog: {}", id);
         return blogRepository.findByIdAndIsActiveTrue(id);
     }
 

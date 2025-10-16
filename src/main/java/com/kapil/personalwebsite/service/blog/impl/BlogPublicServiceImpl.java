@@ -5,7 +5,8 @@ import com.kapil.personalwebsite.entity.BlogStatus;
 import com.kapil.personalwebsite.repository.BlogRepository;
 import com.kapil.personalwebsite.service.blog.BlogPublicService;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,11 +19,12 @@ import java.util.Optional;
  *
  * @author Kapil Garg
  */
-@Slf4j
 @Service
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
 public class BlogPublicServiceImpl implements BlogPublicService {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(BlogPublicServiceImpl.class);
 
     private final BlogRepository blogRepository;
 
@@ -33,7 +35,7 @@ public class BlogPublicServiceImpl implements BlogPublicService {
      */
     @Override
     public List<Blog> getPublishedBlogs() {
-        log.info("Fetching all published blogs for public access");
+        LOGGER.info("Fetching all published blogs for public access");
         return blogRepository.findByStatusAndIsActiveTrueOrderByPublishedAtDesc(BlogStatus.PUBLISHED);
     }
 
@@ -45,7 +47,7 @@ public class BlogPublicServiceImpl implements BlogPublicService {
      */
     @Override
     public Optional<Blog> getPublishedBlogBySlug(String slug) {
-        log.info("Fetching published blog by slug: {}", slug);
+        LOGGER.info("Fetching published blog by slug: {}", slug);
         return blogRepository.findBySlugAndStatusAndIsActiveTrue(slug, BlogStatus.PUBLISHED);
     }
 
@@ -57,7 +59,7 @@ public class BlogPublicServiceImpl implements BlogPublicService {
      */
     @Override
     public Optional<Blog> getPublishedBlogById(String id) {
-        log.info("Fetching published blog by ID: {}", id);
+        LOGGER.info("Fetching published blog by ID: {}", id);
         return blogRepository.findByIdAndStatusAndIsActiveTrue(id, BlogStatus.PUBLISHED);
     }
 
