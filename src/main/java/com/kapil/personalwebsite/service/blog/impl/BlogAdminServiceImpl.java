@@ -2,10 +2,13 @@ package com.kapil.personalwebsite.service.blog.impl;
 
 import com.kapil.personalwebsite.entity.Blog;
 import com.kapil.personalwebsite.entity.BlogStatus;
+import com.kapil.personalwebsite.exception.BlogNotFoundException;
+import com.kapil.personalwebsite.exception.BlogSlugAlreadyExistsException;
 import com.kapil.personalwebsite.repository.BlogRepository;
 import com.kapil.personalwebsite.service.blog.BlogAdminService;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,11 +21,12 @@ import java.util.Optional;
  *
  * @author Kapil Garg
  */
-@Slf4j
 @Service
 @Transactional
 @RequiredArgsConstructor
 public class BlogAdminServiceImpl implements BlogAdminService {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(BlogAdminServiceImpl.class);
 
     private final BlogRepository blogRepository;
 
@@ -34,7 +38,7 @@ public class BlogAdminServiceImpl implements BlogAdminService {
     @Override
     @Transactional(readOnly = true)
     public List<Blog> getAllBlogs() {
-        log.info("Fetching all blogs for admin access");
+        LOGGER.info("Fetching all blogs for admin access");
         return blogRepository.findByIsActiveTrueOrderByCreatedAtDesc();
     }
 
@@ -47,7 +51,7 @@ public class BlogAdminServiceImpl implements BlogAdminService {
     @Override
     @Transactional(readOnly = true)
     public Optional<Blog> getBlogBySlug(String slug) {
-        log.info("Fetching blog by slug: {}", slug);
+        LOGGER.info("Fetching blog by slug: {}", slug);
         return blogRepository.findBySlugAndIsActiveTrue(slug);
     }
 
@@ -60,7 +64,7 @@ public class BlogAdminServiceImpl implements BlogAdminService {
     @Override
     @Transactional(readOnly = true)
     public Optional<Blog> getBlogById(String id) {
-        log.info("Fetching blog by ID: {}", id);
+        LOGGER.info("Fetching blog by ID: {}", id);
         return blogRepository.findByIdAndIsActiveTrue(id);
     }
 
@@ -73,9 +77,9 @@ public class BlogAdminServiceImpl implements BlogAdminService {
      */
     @Override
     public Blog createBlog(Blog blog) {
-        log.info("Creating new blog: {}", blog.getTitle());
+        LOGGER.info("Creating new blog: {}", blog.getTitle());
         if (blogRepository.existsBySlug(blog.getSlug())) {
-            throw new IllegalArgumentException("Blog with slug '" + blog.getSlug() + "' already exists");
+            throw new BlogSlugAlreadyExistsException("Blog with slug '" + blog.getSlug() + "' already exists");
         }
         if (blog.getReadingTime() == null) {
             blog.setReadingTime(blog.calculateReadingTime());
@@ -91,31 +95,28 @@ public class BlogAdminServiceImpl implements BlogAdminService {
      * @return an Optional containing the updated blog if found, or empty if not found
      */
     @Override
-    public Optional<Blog> updateBlog(String id, Blog blogDetails) {
-        log.info("Updating blog: {}", id);
+    public Blog updateBlog(String id, Blog blogDetails) {
+        LOGGER.info("Updating blog: {}", id);
         return blogRepository.findByIdAndIsActiveTrue(id)
                 .map(existingBlog -> {
                     updateBlogFields(existingBlog, blogDetails);
                     return blogRepository.save(existingBlog);
-                });
+                })
+                .orElseThrow(() -> new BlogNotFoundException("Blog with ID '" + id + "' not found"));
     }
 
     /**
      * Deletes a blog by its ID (soft delete).
      *
      * @param id the ID of the blog to delete
-     * @return true if the blog was deleted, false otherwise
      */
     @Override
-    public boolean deleteBlog(String id) {
-        log.info("Deleting blog: {}", id);
-        return blogRepository.findByIdAndIsActiveTrue(id)
-                .map(blog -> {
-                    blog.setIsActive(false);
-                    blogRepository.save(blog);
-                    return true;
-                })
-                .orElse(false);
+    public void deleteBlog(String id) {
+        LOGGER.info("Deleting blog: {}", id);
+        Blog blog = blogRepository.findByIdAndIsActiveTrue(id)
+                .orElseThrow(() -> new BlogNotFoundException("Blog with ID '" + id + "' not found"));
+        blog.setIsActive(false);
+        blogRepository.save(blog);
     }
 
     /**
@@ -125,13 +126,12 @@ public class BlogAdminServiceImpl implements BlogAdminService {
      * @return an Optional containing the published blog if found, or empty if not found
      */
     @Override
-    public Optional<Blog> publishBlog(String id) {
-        log.info("Publishing blog: {}", id);
-        return blogRepository.findByIdAndIsActiveTrue(id)
-                .map(blog -> {
-                    blog.publish();
-                    return blogRepository.save(blog);
-                });
+    public Blog publishBlog(String id) {
+        LOGGER.info("Publishing blog: {}", id);
+        Blog blog = blogRepository.findByIdAndIsActiveTrue(id)
+                .orElseThrow(() -> new BlogNotFoundException("Blog with ID '" + id + "' not found"));
+        blog.publish();
+        return blogRepository.save(blog);
     }
 
     /**
@@ -141,14 +141,13 @@ public class BlogAdminServiceImpl implements BlogAdminService {
      * @return an Optional containing the unpublished blog if found, or empty if not found
      */
     @Override
-    public Optional<Blog> unpublishBlog(String id) {
-        log.info("Unpublishing blog: {}", id);
-        return blogRepository.findByIdAndIsActiveTrue(id)
-                .map(blog -> {
-                    blog.setStatus(BlogStatus.DRAFT);
-                    blog.setPublishedAt(null);
-                    return blogRepository.save(blog);
-                });
+    public Blog unpublishBlog(String id) {
+        LOGGER.info("Unpublishing blog: {}", id);
+        Blog blog = blogRepository.findByIdAndIsActiveTrue(id)
+                .orElseThrow(() -> new BlogNotFoundException("Blog with ID '" + id + "' not found"));
+        blog.setStatus(BlogStatus.DRAFT);
+        blog.setPublishedAt(null);
+        return blogRepository.save(blog);
     }
 
     /**

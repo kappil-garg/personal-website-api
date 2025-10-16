@@ -5,7 +5,8 @@ import com.kapil.personalwebsite.service.blog.BlogAdminService;
 import com.kapil.personalwebsite.service.blog.BlogAnalyticsService;
 import com.kapil.personalwebsite.service.blog.BlogPublicService;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -20,14 +21,15 @@ import java.util.Optional;
  * @author Kapil Garg
  * @version 2.0
  */
-@Slf4j
 @RestController
 @RequestMapping("/blogs")
 @RequiredArgsConstructor
 public class BlogController {
 
-    private final BlogPublicService blogPublicService;
+    private static final Logger LOGGER = LoggerFactory.getLogger(BlogController.class);
+
     private final BlogAdminService blogAdminService;
+    private final BlogPublicService blogPublicService;
     private final BlogAnalyticsService blogAnalyticsService;
 
     /**
@@ -37,7 +39,7 @@ public class BlogController {
      */
     @GetMapping
     public ResponseEntity<List<Blog>> getAllBlogs() {
-        log.info("GET /blogs - Fetching all blogs (admin)");
+        LOGGER.info("GET /blogs - Fetching all blogs (admin)");
         List<Blog> blogs = blogAdminService.getAllBlogs();
         return ResponseEntity.ok(blogs);
     }
@@ -50,7 +52,7 @@ public class BlogController {
      */
     @GetMapping("/{slug}")
     public ResponseEntity<Blog> getBlogBySlug(@PathVariable String slug) {
-        log.info("GET /blogs/{} - Fetching blog by slug (admin)", slug);
+        LOGGER.info("GET /blogs/{} - Fetching blog by slug (admin)", slug);
         Optional<Blog> blog = blogAdminService.getBlogBySlug(slug);
         return blog.map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
@@ -64,7 +66,7 @@ public class BlogController {
      */
     @GetMapping("/id/{id}")
     public ResponseEntity<Blog> getBlogById(@PathVariable String id) {
-        log.info("GET /blogs/id/{} - Fetching blog by ID (admin)", id);
+        LOGGER.info("GET /blogs/id/{} - Fetching blog by ID (admin)", id);
         Optional<Blog> blog = blogAdminService.getBlogById(id);
         return blog.map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
@@ -77,7 +79,7 @@ public class BlogController {
      */
     @GetMapping("/published")
     public ResponseEntity<List<Blog>> getPublishedBlogs() {
-        log.info("GET /blogs/published - Fetching all published blogs (public)");
+        LOGGER.info("GET /blogs/published - Fetching all published blogs (public)");
         List<Blog> blogs = blogPublicService.getPublishedBlogs();
         return ResponseEntity.ok(blogs);
     }
@@ -90,7 +92,7 @@ public class BlogController {
      */
     @GetMapping("/published/{slug}")
     public ResponseEntity<Blog> getPublishedBlogBySlug(@PathVariable String slug) {
-        log.info("GET /blogs/published/{} - Fetching published blog by slug (public)", slug);
+        LOGGER.info("GET /blogs/published/{} - Fetching published blog by slug (public)", slug);
         Optional<Blog> blog = blogPublicService.getPublishedBlogBySlug(slug);
         return blog.map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
@@ -104,7 +106,7 @@ public class BlogController {
      */
     @PostMapping("/{id}/view")
     public ResponseEntity<Blog> incrementViewCount(@PathVariable String id) {
-        log.info("POST /blogs/{}/view - Incrementing view count (public)", id);
+        LOGGER.info("POST /blogs/{}/view - Incrementing view count (public)", id);
         Optional<Blog> blog = blogAnalyticsService.incrementViewCount(id);
         return blog.map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
@@ -118,7 +120,7 @@ public class BlogController {
      */
     @PostMapping
     public ResponseEntity<Blog> createBlog(@RequestBody Blog blog) {
-        log.info("POST /blogs - Creating new blog: {} (admin)", blog.getTitle());
+        LOGGER.info("POST /blogs - Creating new blog: {} (admin)", blog.getTitle());
         Blog createdBlog = blogAdminService.createBlog(blog);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdBlog);
     }
@@ -132,10 +134,9 @@ public class BlogController {
      */
     @PutMapping("/{id}")
     public ResponseEntity<Blog> updateBlog(@PathVariable String id, @RequestBody Blog blog) {
-        log.info("PUT /blogs/{} - Updating blog (admin)", id);
-        Optional<Blog> updatedBlog = blogAdminService.updateBlog(id, blog);
-        return updatedBlog.map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        LOGGER.info("PUT /blogs/{} - Updating blog (admin)", id);
+        Blog updatedBlog = blogAdminService.updateBlog(id, blog);
+        return ResponseEntity.ok(updatedBlog);
     }
 
     /**
@@ -146,9 +147,9 @@ public class BlogController {
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteBlog(@PathVariable String id) {
-        log.info("DELETE /blogs/{} - Deleting blog", id);
-        boolean deleted = blogAdminService.deleteBlog(id);
-        return deleted ? ResponseEntity.noContent().build() : ResponseEntity.notFound().build();
+        LOGGER.info("DELETE /blogs/{} - Deleting blog", id);
+        blogAdminService.deleteBlog(id);
+        return ResponseEntity.noContent().build();
     }
 
     /**
@@ -159,10 +160,9 @@ public class BlogController {
      */
     @PutMapping("/{id}/publish")
     public ResponseEntity<Blog> publishBlog(@PathVariable String id) {
-        log.info("PUT /blogs/{}/publish - Publishing blog", id);
-        Optional<Blog> publishedBlog = blogAdminService.publishBlog(id);
-        return publishedBlog.map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        LOGGER.info("PUT /blogs/{}/publish - Publishing blog", id);
+        Blog publishedBlog = blogAdminService.publishBlog(id);
+        return ResponseEntity.ok(publishedBlog);
     }
 
     /**
@@ -173,10 +173,9 @@ public class BlogController {
      */
     @PutMapping("/{id}/unpublish")
     public ResponseEntity<Blog> unpublishBlog(@PathVariable String id) {
-        log.info("PUT /blogs/{}/unpublish - Unpublishing blog", id);
-        Optional<Blog> unpublishedBlog = blogAdminService.unpublishBlog(id);
-        return unpublishedBlog.map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        LOGGER.info("PUT /blogs/{}/unpublish - Unpublishing blog", id);
+        Blog unpublishedBlog = blogAdminService.unpublishBlog(id);
+        return ResponseEntity.ok(unpublishedBlog);
     }
 
 }

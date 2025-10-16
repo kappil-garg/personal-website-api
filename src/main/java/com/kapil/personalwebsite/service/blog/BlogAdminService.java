@@ -50,32 +50,31 @@ public interface BlogAdminService {
      *
      * @param id          the ID of the blog to update
      * @param blogDetails the updated blog details
-     * @return an Optional containing the updated blog if found, or empty if not found
+     * @return the updated blog
      */
-    Optional<Blog> updateBlog(String id, Blog blogDetails);
+    Blog updateBlog(String id, Blog blogDetails);
 
     /**
      * Deletes a blog by its ID (soft delete).
      *
      * @param id the ID of the blog to delete
-     * @return true if the blog was deleted, false otherwise
      */
-    boolean deleteBlog(String id);
+    void deleteBlog(String id);
 
     /**
      * Publishes a blog by setting its status to PUBLISHED.
      *
      * @param id the ID of the blog to publish
-     * @return an Optional containing the published blog if found, or empty if not found
+     * @return the published blog
      */
-    Optional<Blog> publishBlog(String id);
+    Blog publishBlog(String id);
 
     /**
      * Unpublishes a blog by setting its status to DRAFT.
      *
      * @param id the ID of the blog to unpublish
-     * @return an Optional containing the unpublished blog if found, or empty if not found
+     * @return the unpublished blog
      */
-    Optional<Blog> unpublishBlog(String id);
+    Blog unpublishBlog(String id);
 
 }
