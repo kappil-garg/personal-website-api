@@ -74,6 +74,9 @@ public class Blog {
     @Field("is_active")
     private Boolean isActive = true;
 
+    @Field("category")
+    private BlogCategory category;
+
     /**
      * Constructor for creating new blogs.
      *
@@ -85,6 +88,13 @@ public class Blog {
         this.title = title;
         this.content = content;
         this.slug = slug;
+    }
+
+    public Blog(String title, String content, String slug, BlogCategory category) {
+        this.title = title;
+        this.content = content;
+        this.slug = slug;
+        this.category = category;
     }
 
     /**

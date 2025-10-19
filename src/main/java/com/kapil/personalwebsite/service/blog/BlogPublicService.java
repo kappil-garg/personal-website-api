@@ -1,6 +1,7 @@
 package com.kapil.personalwebsite.service.blog;
 
 import com.kapil.personalwebsite.entity.Blog;
+import com.kapil.personalwebsite.entity.BlogCategory;
 
 import java.util.List;
 import java.util.Optional;
@@ -35,5 +36,13 @@ public interface BlogPublicService {
      * @return an Optional containing the published blog if found, or empty if not found
      */
     Optional<Blog> getPublishedBlogById(String id);
+
+    /**
+     * Retrieves all published blogs by category.
+     *
+     * @param category the blog category
+     * @return a list of published blogs in the specified category
+     */
+    List<Blog> getPublishedBlogsByCategory(BlogCategory category);
 
 }
