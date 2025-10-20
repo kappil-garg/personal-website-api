@@ -1,6 +1,7 @@
 package com.kapil.personalwebsite.controller;
 
 import com.kapil.personalwebsite.entity.Blog;
+import com.kapil.personalwebsite.entity.BlogCategory;
 import com.kapil.personalwebsite.service.blog.BlogAdminService;
 import com.kapil.personalwebsite.service.blog.BlogAnalyticsService;
 import com.kapil.personalwebsite.service.blog.BlogPublicService;
@@ -81,6 +82,19 @@ public class BlogController {
     public ResponseEntity<List<Blog>> getPublishedBlogs() {
         LOGGER.info("GET /blogs/published - Fetching all published blogs (public)");
         List<Blog> blogs = blogPublicService.getPublishedBlogs();
+        return ResponseEntity.ok(blogs);
+    }
+
+    /**
+     * Retrieves published blogs by category (public access).
+     *
+     * @param category the blog category
+     * @return a ResponseEntity containing the list of published blogs in the category
+     */
+    @GetMapping("/published/category/{category}")
+    public ResponseEntity<List<Blog>> getPublishedBlogsByCategory(@PathVariable BlogCategory category) {
+        LOGGER.info("GET /blogs/published/category/{} - Fetching published blogs by category (public)", category);
+        List<Blog> blogs = blogPublicService.getPublishedBlogsByCategory(category);
         return ResponseEntity.ok(blogs);
     }
 

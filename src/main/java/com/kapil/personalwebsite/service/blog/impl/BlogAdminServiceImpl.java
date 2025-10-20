@@ -162,6 +162,7 @@ public class BlogAdminServiceImpl implements BlogAdminService {
         existingBlog.setSlug(blogDetails.getSlug());
         existingBlog.setExcerpt(blogDetails.getExcerpt());
         existingBlog.setFeaturedImage(blogDetails.getFeaturedImage());
+        existingBlog.setCategory(blogDetails.getCategory());
         if (blogDetails.getContent() != null && !blogDetails.getContent().equals(existingBlog.getContent())) {
             existingBlog.setReadingTime(existingBlog.calculateReadingTime());
         } else if (blogDetails.getReadingTime() != null) {

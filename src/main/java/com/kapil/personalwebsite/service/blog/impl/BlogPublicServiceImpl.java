@@ -1,6 +1,7 @@
 package com.kapil.personalwebsite.service.blog.impl;
 
 import com.kapil.personalwebsite.entity.Blog;
+import com.kapil.personalwebsite.entity.BlogCategory;
 import com.kapil.personalwebsite.entity.BlogStatus;
 import com.kapil.personalwebsite.repository.BlogRepository;
 import com.kapil.personalwebsite.service.blog.BlogPublicService;
@@ -61,6 +62,18 @@ public class BlogPublicServiceImpl implements BlogPublicService {
     public Optional<Blog> getPublishedBlogById(String id) {
         LOGGER.info("Fetching published blog by ID: {}", id);
         return blogRepository.findByIdAndStatusAndIsActiveTrue(id, BlogStatus.PUBLISHED);
+    }
+
+    /**
+     * Retrieves all published blogs by category.
+     *
+     * @param category the blog category
+     * @return a list of published blogs in the specified category
+     */
+    @Override
+    public List<Blog> getPublishedBlogsByCategory(BlogCategory category) {
+        LOGGER.info("Fetching published blogs by category: {}", category);
+        return blogRepository.findByCategoryAndStatusOrderByPublishedAtDesc(category, BlogStatus.PUBLISHED);
     }
 
 }

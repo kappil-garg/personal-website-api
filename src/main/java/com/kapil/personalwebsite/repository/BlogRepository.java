@@ -1,6 +1,7 @@
 package com.kapil.personalwebsite.repository;
 
 import com.kapil.personalwebsite.entity.Blog;
+import com.kapil.personalwebsite.entity.BlogCategory;
 import com.kapil.personalwebsite.entity.BlogStatus;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
@@ -72,5 +73,14 @@ public interface BlogRepository extends MongoRepository<Blog, String> {
      * @return an Optional containing the published blog if found, or empty if not found
      */
     Optional<Blog> findByIdAndStatusAndIsActiveTrue(String id, BlogStatus status);
+
+    /**
+     * Finds all published blogs by category ordered by published date in descending order.
+     *
+     * @param category the blog category
+     * @param status   the blog status
+     * @return list of published blogs in the specified category
+     */
+    List<Blog> findByCategoryAndStatusOrderByPublishedAtDesc(BlogCategory category, BlogStatus status);
 
 }
