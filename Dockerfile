@@ -8,5 +8,5 @@ FROM eclipse-temurin:21-jre
 WORKDIR /app
 RUN addgroup --system spring && adduser --system spring --ingroup spring
 USER spring:spring
-COPY --from=build /app/build/libs/*-SNAPSHOT.jar app.jar
+COPY --from=build /app/build/libs/personal-website-api-*.jar app.jar
 CMD ["sh", "-c", "java -Dserver.port=$PORT -jar app.jar"]
