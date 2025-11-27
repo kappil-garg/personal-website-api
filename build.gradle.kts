@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "com.kapil"
-version = "1.2.0"
+version = project.property("version") as String
 description = "Backend code for Personal Website"
 
 java {
