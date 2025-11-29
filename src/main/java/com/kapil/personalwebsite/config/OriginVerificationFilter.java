@@ -1,5 +1,6 @@
 package com.kapil.personalwebsite.config;
 
+import jakarta.annotation.PostConstruct;
 import jakarta.servlet.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -36,25 +37,30 @@ public class OriginVerificationFilter implements Filter {
     private static final String REFERER_HEADER = "Referer";
     private static final String OPTIONS_METHOD = "OPTIONS";
     private static final String API_KEY_HEADER = "X-API-Key";
+    private static final String USER_AGENT_HEADER = "User-Agent";
     private static final String BLOGS_PUBLISHED_PATH = "/blogs/published";
 
-    @Value("${api.server-key}")
+    @Value("${api.server-key:}")
     private String serverApiKey;
 
     @Value("${cors.allowed-origins}")
     private String allowedOrigins;
 
+    @Value("${ssr.allow-no-origin}")
+    private boolean allowNoOriginForSSR;
+
     // Cache for parsed allowed origins
     private Set<String> allowedOriginsSet;
 
-    @Override
-    public void init(FilterConfig filterConfig) {
+    @PostConstruct
+    public void initialize() {
         if (StringUtils.hasText(allowedOrigins)) {
             allowedOriginsSet = Arrays.stream(allowedOrigins.split(","))
                     .map(String::trim)
                     .filter(StringUtils::hasText)
                     .collect(Collectors.toSet());
-            LOGGER.info("Initialized OriginVerificationFilter with {} allowed origins", allowedOriginsSet.size());
+            LOGGER.info("OriginVerificationFilter initialized with {} allowed origins, SSR allowed: {}",
+                    allowedOriginsSet.size(), allowNoOriginForSSR);
         } else {
             allowedOriginsSet = Collections.emptySet();
             LOGGER.warn("No allowed origins configured for OriginVerificationFilter");
@@ -76,11 +82,12 @@ public class OriginVerificationFilter implements Filter {
             return;
         }
         if (!isRequestAuthorized(httpRequest)) {
-            LOGGER.warn("Unauthorized request blocked - Path: {}, Origin: {}, Referer: {}, RemoteAddr: {}",
+            LOGGER.warn("Unauthorized request blocked - Path: {}, Origin: {}, Referer: {}, RemoteAddr: {}, User-Agent: {}",
                     requestPath,
                     httpRequest.getHeader(ORIGIN_HEADER),
                     httpRequest.getHeader(REFERER_HEADER),
-                    httpRequest.getRemoteAddr());
+                    httpRequest.getRemoteAddr(),
+                    httpRequest.getHeader(USER_AGENT_HEADER));
             sendForbiddenResponse(httpResponse);
             return;
         }
@@ -111,8 +118,8 @@ public class OriginVerificationFilter implements Filter {
      */
     private boolean isRequestAuthorized(HttpServletRequest request) {
         String origin = request.getHeader(ORIGIN_HEADER);
-        String referer = request.getHeader(REFERER_HEADER);
         String apiKey = request.getHeader(API_KEY_HEADER);
+        String referer = request.getHeader(REFERER_HEADER);
         if (StringUtils.hasText(apiKey) && StringUtils.hasText(serverApiKey)) {
             return serverApiKey.equals(apiKey);
         }
@@ -121,9 +128,29 @@ public class OriginVerificationFilter implements Filter {
         }
         if (StringUtils.hasText(referer)) {
             String refererOrigin = extractOriginFromReferer(referer);
-            if (refererOrigin != null) {
-                return isAllowedOrigin(refererOrigin);
+            if (refererOrigin != null && isAllowedOrigin(refererOrigin)) {
+                return true;
             }
+        }
+        if (allowNoOriginForSSR && isLikelySSRRequest(request)) {
+            LOGGER.debug("Allowing SSR request without Origin header from: {}", request.getRemoteAddr());
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Determine if the request is likely an SSR/server request based on absence of Origin header.
+     *
+     * @param request the HTTP servlet request
+     * @return true if this appears to be an SSR/server request
+     */
+    private boolean isLikelySSRRequest(HttpServletRequest request) {
+        String origin = request.getHeader(ORIGIN_HEADER);
+        if (!StringUtils.hasText(origin)) {
+            LOGGER.debug("Detected server-to-server request (no Origin header) from: {}",
+                    request.getRemoteAddr());
+            return true;
         }
         return false;
     }
