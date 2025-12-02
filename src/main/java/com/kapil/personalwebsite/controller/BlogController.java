@@ -97,8 +97,8 @@ public class BlogController {
     public ResponseEntity<ApiResponse<List<Blog>>> getPublishedBlogsByCategory(@PathVariable BlogCategory category) {
         LOGGER.info("GET /blogs/published/category/{} - Fetching published blogs by category (public)", category);
         List<Blog> blogs = blogPublicService.getPublishedBlogsByCategory(category);
-        ApiResponse<List<Blog>> response = ApiResponse.success(blogs, 
-            String.format("Published blogs in category '%s' retrieved successfully", category));
+        ApiResponse<List<Blog>> response = ApiResponse.success(blogs,
+                String.format("Published blogs in category '%s' retrieved successfully", category));
         return ResponseEntity.ok(response);
     }
 
@@ -113,13 +113,13 @@ public class BlogController {
         LOGGER.info("GET /blogs/published/{} - Fetching published blog by slug (public)", slug);
         Optional<Blog> blog = blogPublicService.getPublishedBlogBySlug(slug);
         if (blog.isPresent()) {
-            ApiResponse<Blog> response = ApiResponse.success(blog.get(), 
-                String.format("Blog with slug '%s' retrieved successfully", slug));
+            ApiResponse<Blog> response = ApiResponse.success(blog.get(),
+                    String.format("Blog with slug '%s' retrieved successfully", slug));
             return ResponseEntity.ok(response);
         } else {
             ApiResponse<Blog> response = ApiResponse.error(
-                String.format("Blog with slug '%s' not found", slug), 
-                HttpStatus.NOT_FOUND.value());
+                    String.format("Blog with slug '%s' not found", slug),
+                    HttpStatus.NOT_FOUND.value());
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
         }
     }
@@ -135,13 +135,13 @@ public class BlogController {
         LOGGER.info("POST /blogs/{}/view - Incrementing view count (public)", id);
         Optional<Blog> blog = blogAnalyticsService.incrementViewCount(id);
         if (blog.isPresent()) {
-            ApiResponse<Blog> response = ApiResponse.success(blog.get(), 
-                "View count incremented successfully");
+            ApiResponse<Blog> response = ApiResponse.success(blog.get(),
+                    "View count incremented successfully");
             return ResponseEntity.ok(response);
         } else {
             ApiResponse<Blog> response = ApiResponse.error(
-                String.format("Blog with ID '%s' not found", id), 
-                HttpStatus.NOT_FOUND.value());
+                    String.format("Blog with ID '%s' not found", id),
+                    HttpStatus.NOT_FOUND.value());
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
         }
     }

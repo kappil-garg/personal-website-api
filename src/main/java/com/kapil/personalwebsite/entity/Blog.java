@@ -113,15 +113,6 @@ public class Blog {
     }
 
     /**
-     * Checks if the blog is publicly visible.
-     *
-     * @return true if the blog is published and active, false otherwise
-     */
-    public boolean isPubliclyVisible() {
-        return isActive && status.isPubliclyVisible();
-    }
-
-    /**
      * Calculates reading time based on content length.
      * Assumes average reading speed of 200 words per minute.
      *

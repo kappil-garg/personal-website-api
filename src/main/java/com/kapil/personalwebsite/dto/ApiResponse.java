@@ -23,19 +23,19 @@ public class ApiResponse<T> {
     private boolean success;
     private String message;
     private T data;
-    
+
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
     private LocalDateTime timestamp;
-    
+
     private String path;
     private Integer status;
 
     /**
      * Creates a successful response with data.
      *
-     * @param data the response data
+     * @param data    the response data
      * @param message the success message
-     * @param <T> the type of data
+     * @param <T>     the type of data
      * @return ApiResponse with success status
      */
     public static <T> ApiResponse<T> success(T data, String message) {
@@ -48,30 +48,11 @@ public class ApiResponse<T> {
     }
 
     /**
-     * Creates a successful response with data and custom status.
-     *
-     * @param data the response data
-     * @param message the success message
-     * @param status the HTTP status code
-     * @param <T> the type of data
-     * @return ApiResponse with success status
-     */
-    public static <T> ApiResponse<T> success(T data, String message, Integer status) {
-        return ApiResponse.<T>builder()
-                .success(true)
-                .message(message)
-                .data(data)
-                .timestamp(LocalDateTime.now())
-                .status(status)
-                .build();
-    }
-
-    /**
      * Creates an error response.
      *
      * @param message the error message
-     * @param status the HTTP status code
-     * @param <T> the type of data
+     * @param status  the HTTP status code
+     * @param <T>     the type of data
      * @return ApiResponse with error status
      */
     public static <T> ApiResponse<T> error(String message, Integer status) {
@@ -83,23 +64,4 @@ public class ApiResponse<T> {
                 .build();
     }
 
-    /**
-     * Creates an error response with path information.
-     *
-     * @param message the error message
-     * @param status the HTTP status code
-     * @param path the request path
-     * @param <T> the type of data
-     * @return ApiResponse with error status
-     */
-    public static <T> ApiResponse<T> error(String message, Integer status, String path) {
-        return ApiResponse.<T>builder()
-                .success(false)
-                .message(message)
-                .timestamp(LocalDateTime.now())
-                .status(status)
-                .path(path)
-                .build();
-    }
-    
 }
