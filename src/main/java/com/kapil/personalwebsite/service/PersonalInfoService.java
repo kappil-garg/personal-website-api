@@ -6,7 +6,7 @@ import java.util.Optional;
 
 /**
  * Service interface for PersonalInfo operations.
- * Provides read-only access to portfolio information.
+ * Provides access to portfolio information, including read and (admin-only) update operations.
  *
  * @author Kapil Garg
  */

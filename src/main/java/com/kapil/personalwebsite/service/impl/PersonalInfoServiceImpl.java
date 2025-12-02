@@ -13,7 +13,7 @@ import java.util.Optional;
 
 /**
  * Implementation of PersonalInfoService for portfolio operations.
- * Provides read-only access to portfolio information for public access.
+ * Provides read access to portfolio information for public users, and write (update) access for administrators.
  *
  * @author Kapil Garg
  */

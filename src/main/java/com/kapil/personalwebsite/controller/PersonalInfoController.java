@@ -3,6 +3,7 @@ package com.kapil.personalwebsite.controller;
 import com.kapil.personalwebsite.dto.ApiResponse;
 import com.kapil.personalwebsite.entity.PersonalInfo;
 import com.kapil.personalwebsite.service.PersonalInfoService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,13 +56,17 @@ public class PersonalInfoController {
      * Updates the personal information (admin only).
      *
      * @param personalInfo the updated personal information
-     * @return a ResponseEntity containing the updated personal information
+     * @return a ResponseEntity containing the updated personal information wrapped in ApiResponse
      */
     @PutMapping
-    public ResponseEntity<PersonalInfo> updatePersonalInfo(@RequestBody PersonalInfo personalInfo) {
+    public ResponseEntity<ApiResponse<PersonalInfo>> updatePersonalInfo(@Valid @RequestBody PersonalInfo personalInfo) {
         LOGGER.info("PUT /portfolio - Updating personal information (admin)");
         PersonalInfo updatedInfo = personalInfoService.updatePersonalInfo(personalInfo);
-        return ResponseEntity.ok(updatedInfo);
+        ApiResponse<PersonalInfo> response = ApiResponse.success(
+                updatedInfo,
+                "Personal information updated successfully"
+        );
+        return ResponseEntity.ok(response);
     }
 
 }
