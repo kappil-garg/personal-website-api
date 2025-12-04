@@ -19,7 +19,7 @@ import java.util.List;
  * @author Kapil Garg
  */
 @RestController
-@RequestMapping("/experience")
+@RequestMapping("/experiences")
 @RequiredArgsConstructor
 public class ExperienceController {
 
@@ -34,7 +34,7 @@ public class ExperienceController {
      */
     @GetMapping
     public ResponseEntity<ApiResponse<List<Experience>>> getAllExperiences() {
-        LOGGER.info("GET /experience - Fetching all experiences (public)");
+        LOGGER.info("GET /experiences - Fetching all experiences (public)");
         List<Experience> experiences = experienceService.getAllExperiences();
         ApiResponse<List<Experience>> response = ApiResponse.success(
                 experiences,

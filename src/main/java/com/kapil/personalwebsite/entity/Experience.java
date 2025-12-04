@@ -1,6 +1,7 @@
 package com.kapil.personalwebsite.entity;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -45,10 +46,12 @@ public class Experience {
 
     @NotBlank(message = "Start date is required")
     @Size(max = 7, message = "Start date must be in MM-YYYY format")
+    @Pattern(regexp = "^(0[1-9]|1[0-2])-\\d{4}$", message = "Start date must be in MM-YYYY format (e.g., 12-2025)")
     @Field("start_date")
     private String startDate;
 
     @Size(max = 7, message = "End date must be in MM-YYYY format")
+    @Pattern(regexp = "^(0[1-9]|1[0-2])-\\d{4}$", message = "End date must be in MM-YYYY format (e.g., 12-2025)")
     @Field("end_date")
     private String endDate;
 
