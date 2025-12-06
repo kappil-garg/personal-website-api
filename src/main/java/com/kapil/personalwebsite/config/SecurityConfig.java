@@ -34,7 +34,7 @@ public class SecurityConfig {
     @Value("${admin.password}")
     private String adminPassword;
 
-    @Value("${cors.allowed-origins:}")
+    @Value("${cors.allowed-origins}")
     private String corsAllowedOrigins;
 
     /**
@@ -54,6 +54,9 @@ public class SecurityConfig {
                         .requestMatchers("/blogs/published/**").permitAll()
                         .requestMatchers("/blogs/*/view").permitAll()
                         .requestMatchers(HttpMethod.GET, "/portfolio").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/experiences").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/projects").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/contact").permitAll()
                         .requestMatchers("/actuator/health").permitAll()
                         .requestMatchers("/blogs").authenticated()
                         .requestMatchers("/blogs/**").authenticated()
@@ -69,7 +72,7 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         // If not configured, default to localhost:4200 for development
-        String originsToUse = (corsAllowedOrigins == null || corsAllowedOrigins.trim().isEmpty())
+        String originsToUse = (corsAllowedOrigins == null || corsAllowedOrigins.trim().isEmpty() || corsAllowedOrigins.equals("null"))
                 ? "http://localhost:4200"
                 : corsAllowedOrigins;
         String[] origins = originsToUse.split(",");

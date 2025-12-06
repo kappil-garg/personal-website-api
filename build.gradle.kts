@@ -32,6 +32,8 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-data-mongodb")
 
+    implementation("org.springframework.boot:spring-boot-starter-mail")
+
     compileOnly("org.projectlombok:lombok")
     annotationProcessor("org.projectlombok:lombok")
 
@@ -49,6 +51,12 @@ dependencies {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+    val mockitoCore = configurations.testRuntimeClasspath.get()
+        .filter { it.name.startsWith("mockito-core") }
+        .firstOrNull()
+    if (mockitoCore != null) {
+        jvmArgs = listOf("-javaagent:${mockitoCore.absolutePath}")
+    }
 }
 
 springBoot {
