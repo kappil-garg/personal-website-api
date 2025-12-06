@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.time.LocalDateTime;
+import java.util.stream.Collectors;
 
 /**
  * Global exception handler for the application.
@@ -90,13 +91,11 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleValidationException(MethodArgumentNotValidException ex,
                                                                    HttpServletRequest request) {
         LOGGER.warn("Validation error: {}", ex.getMessage());
-        StringBuilder errorMessage = new StringBuilder("Validation failed: ");
-        ex.getBindingResult().getFieldErrors().forEach(
-                error -> errorMessage.append(error.getField())
-                        .append(" - ").append(error.getDefaultMessage())
-                        .append("; ")
-        );
-        return createErrorResponse(HttpStatus.BAD_REQUEST, "Validation Error", errorMessage.toString().trim(), request);
+        String errorMessage = ex.getBindingResult().getFieldErrors().stream()
+                .map(error -> error.getField() + " - " + error.getDefaultMessage())
+                .collect(Collectors.joining("; "));
+        String fullMessage = "Validation failed: " + errorMessage;
+        return createErrorResponse(HttpStatus.BAD_REQUEST, "Validation Error", fullMessage, request);
     }
 
     /**

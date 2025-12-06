@@ -51,6 +51,12 @@ dependencies {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+    val mockitoCore = configurations.testRuntimeClasspath.get()
+        .filter { it.name.startsWith("mockito-core") }
+        .firstOrNull()
+    if (mockitoCore != null) {
+        jvmArgs = listOf("-javaagent:${mockitoCore.absolutePath}")
+    }
 }
 
 springBoot {

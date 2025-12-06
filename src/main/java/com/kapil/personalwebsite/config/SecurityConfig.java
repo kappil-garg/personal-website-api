@@ -72,7 +72,7 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         // If not configured, default to localhost:4200 for development
-        String originsToUse = (corsAllowedOrigins == null || corsAllowedOrigins.trim().isEmpty())
+        String originsToUse = (corsAllowedOrigins == null || corsAllowedOrigins.trim().isEmpty() || corsAllowedOrigins.equals("null"))
                 ? "http://localhost:4200"
                 : corsAllowedOrigins;
         String[] origins = originsToUse.split(",");

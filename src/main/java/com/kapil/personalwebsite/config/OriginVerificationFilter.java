@@ -120,7 +120,7 @@ public class OriginVerificationFilter implements Filter {
         String origin = request.getHeader(ORIGIN_HEADER);
         String apiKey = request.getHeader(API_KEY_HEADER);
         String referer = request.getHeader(REFERER_HEADER);
-        if (StringUtils.hasText(apiKey) && StringUtils.hasText(serverApiKey)) {
+        if (StringUtils.hasText(apiKey) && isValidApiKey(serverApiKey)) {
             return serverApiKey.equals(apiKey);
         }
         if (StringUtils.hasText(origin)) {
@@ -202,8 +202,18 @@ public class OriginVerificationFilter implements Filter {
         response.setStatus(HttpStatus.FORBIDDEN.value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.getWriter().write("""
-                {"error":"%s","status":403}
+                 {"error":"%s","status":403}
                 """.formatted("Request origin not authorized"));
+    }
+
+    /**
+     * Validates that the API key is properly configured and not the literal "null" string.
+     *
+     * @param apiKey the API key to validate
+     * @return true if the API key is valid and configured, false otherwise
+     */
+    private boolean isValidApiKey(String apiKey) {
+        return StringUtils.hasText(apiKey) && !apiKey.equals("null");
     }
 
 }
