@@ -40,7 +40,7 @@ public class OriginVerificationFilter implements Filter {
     private static final String USER_AGENT_HEADER = "User-Agent";
     private static final String BLOGS_PUBLISHED_PATH = "/blogs/published";
 
-    @Value("${api.server-key:}")
+    @Value("${api.server-key}")
     private String serverApiKey;
 
     @Value("${cors.allowed-origins}")

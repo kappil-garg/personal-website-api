@@ -2,12 +2,14 @@ package com.kapil.personalwebsite.exception;
 
 import com.kapil.personalwebsite.dto.ErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -44,7 +46,8 @@ public class GlobalExceptionHandler {
      * @return a ResponseEntity with error details
      */
     @ExceptionHandler(BlogSlugAlreadyExistsException.class)
-    public ResponseEntity<ErrorResponse> handleBlogSlugAlreadyExists(BlogSlugAlreadyExistsException ex, HttpServletRequest request) {
+    public ResponseEntity<ErrorResponse> handleBlogSlugAlreadyExists(BlogSlugAlreadyExistsException ex,
+                                                                     HttpServletRequest request) {
         LOGGER.warn("Blog slug already exists: {}", ex.getMessage());
         return createErrorResponse(HttpStatus.CONFLICT, "Blog Slug Already Exists", ex.getMessage(), request);
     }
@@ -72,7 +75,42 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
         LOGGER.warn("Access denied: {}", ex.getMessage());
-        return createErrorResponse(HttpStatus.FORBIDDEN, "Access Denied", "You don't have permission to access this resource", request);
+        return createErrorResponse(HttpStatus.FORBIDDEN, "Access Denied",
+                "You don't have permission to access this resource", request);
+    }
+
+    /**
+     * Handles validation exceptions from request body validation.
+     *
+     * @param ex      the exception
+     * @param request the HTTP request
+     * @return a ResponseEntity with error details
+     */
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ErrorResponse> handleValidationException(MethodArgumentNotValidException ex,
+                                                                   HttpServletRequest request) {
+        LOGGER.warn("Validation error: {}", ex.getMessage());
+        StringBuilder errorMessage = new StringBuilder("Validation failed: ");
+        ex.getBindingResult().getFieldErrors().forEach(
+                error -> errorMessage.append(error.getField())
+                        .append(" - ").append(error.getDefaultMessage())
+                        .append("; ")
+        );
+        return createErrorResponse(HttpStatus.BAD_REQUEST, "Validation Error", errorMessage.toString().trim(), request);
+    }
+
+    /**
+     * Handles constraint violation exceptions.
+     *
+     * @param ex      the exception
+     * @param request the HTTP request
+     * @return a ResponseEntity with error details
+     */
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ErrorResponse> handleConstraintViolation(ConstraintViolationException ex,
+                                                                   HttpServletRequest request) {
+        LOGGER.warn("Constraint violation: {}", ex.getMessage());
+        return createErrorResponse(HttpStatus.BAD_REQUEST, "Validation Error", ex.getMessage(), request);
     }
 
     /**
@@ -84,7 +122,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGenericException(Exception ex, HttpServletRequest request) {
         LOGGER.error("Unexpected error occurred: ", ex);
-        return createErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Internal Server Error", "An unexpected error occurred", request);
+        return createErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Internal Server Error",
+                "An unexpected error occurred", request);
     }
 
     /**
@@ -96,7 +135,8 @@ public class GlobalExceptionHandler {
      * @param request the HTTP request
      * @return a ResponseEntity with error details
      */
-    private ResponseEntity<ErrorResponse> createErrorResponse(HttpStatus status, String error, String message, HttpServletRequest request) {
+    private ResponseEntity<ErrorResponse> createErrorResponse(HttpStatus status, String error, String message,
+                                                              HttpServletRequest request) {
         ErrorResponse errorResponse = ErrorResponse.builder()
                 .timestamp(LocalDateTime.now())
                 .status(status.value())
