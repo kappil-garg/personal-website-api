@@ -7,20 +7,30 @@ import org.springframework.lang.NonNull;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
+/**
+ * Configuration class for setting up CORS (Cross-Origin Resource Sharing) settings.
+ *
+ * @author Kapil Garg
+ */
 @Configuration
 public class CorsConfig {
 
-    @Value("${cors.allowed-origins}")
-    private String allowedOrigins;
+    private final long maxAge;
 
-    @Value("${cors.allowed-methods}")
-    private String allowedMethods;
+    private final String allowedOrigins;
+    private final String allowedMethods;
 
-    @Value("${cors.allow-credentials}")
-    private boolean allowCredentials;
+    private final boolean allowCredentials;
 
-    @Value("${cors.max-age}")
-    private long maxAge;
+    public CorsConfig(@Value("${cors.max-age}") long maxAge,
+                      @Value("${cors.allowed-origins}") String allowedOrigins,
+                      @Value("${cors.allowed-methods}") String allowedMethods,
+                      @Value("${cors.allow-credentials}") boolean allowCredentials) {
+        this.maxAge = maxAge;
+        this.allowedOrigins = allowedOrigins;
+        this.allowedMethods = allowedMethods;
+        this.allowCredentials = allowCredentials;
+    }
 
     @Bean
     public WebMvcConfigurer corsConfigurer() {

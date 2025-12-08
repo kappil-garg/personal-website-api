@@ -11,8 +11,4 @@ public class BlogNotFoundException extends RuntimeException {
         super(message);
     }
 
-    public BlogNotFoundException(String message, Throwable cause) {
-        super(message, cause);
-    }
-
 }

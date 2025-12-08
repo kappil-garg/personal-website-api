@@ -11,8 +11,4 @@ public class BlogSlugAlreadyExistsException extends RuntimeException {
         super(message);
     }
 
-    public BlogSlugAlreadyExistsException(String message, Throwable cause) {
-        super(message, cause);
-    }
-
 }

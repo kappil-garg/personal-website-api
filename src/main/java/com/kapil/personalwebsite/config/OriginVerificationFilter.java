@@ -1,6 +1,7 @@
 package com.kapil.personalwebsite.config;
 
-import jakarta.annotation.PostConstruct;
+import com.kapil.personalwebsite.util.AppConstants;
+import com.kapil.personalwebsite.util.ExceptionUtils;
 import jakarta.servlet.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -32,37 +33,25 @@ public class OriginVerificationFilter implements Filter {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OriginVerificationFilter.class);
 
-    private static final String VIEW_PATH = "/view";
-    private static final String ORIGIN_HEADER = "Origin";
-    private static final String REFERER_HEADER = "Referer";
-    private static final String OPTIONS_METHOD = "OPTIONS";
-    private static final String API_KEY_HEADER = "X-API-Key";
-    private static final String USER_AGENT_HEADER = "User-Agent";
-    private static final String BLOGS_PUBLISHED_PATH = "/blogs/published";
+    private final String serverApiKey;
+    private final boolean allowNoOriginForSSR;
+    private final Set<String> allowedOriginsSet;
 
-    @Value("${api.server-key:}")
-    private String serverApiKey;
-
-    @Value("${cors.allowed-origins}")
-    private String allowedOrigins;
-
-    @Value("${ssr.allow-no-origin}")
-    private boolean allowNoOriginForSSR;
-
-    // Cache for parsed allowed origins
-    private Set<String> allowedOriginsSet;
-
-    @PostConstruct
-    public void initialize() {
+    public OriginVerificationFilter(@Value("${api.server-key}") String serverApiKey,
+                                    @Value("${cors.allowed-origins}") String allowedOrigins,
+                                    @Value("${ssr.allow-no-origin}") boolean allowNoOriginForSSR) {
+        this.serverApiKey = serverApiKey;
+        this.allowNoOriginForSSR = allowNoOriginForSSR;
+        // Initialize allowed origins set
         if (StringUtils.hasText(allowedOrigins)) {
-            allowedOriginsSet = Arrays.stream(allowedOrigins.split(","))
+            this.allowedOriginsSet = Arrays.stream(allowedOrigins.split(","))
                     .map(String::trim)
                     .filter(StringUtils::hasText)
                     .collect(Collectors.toSet());
             LOGGER.info("OriginVerificationFilter initialized with {} allowed origins, SSR allowed: {}",
                     allowedOriginsSet.size(), allowNoOriginForSSR);
         } else {
-            allowedOriginsSet = Collections.emptySet();
+            this.allowedOriginsSet = Collections.emptySet();
             LOGGER.warn("No allowed origins configured for OriginVerificationFilter");
         }
     }
@@ -74,24 +63,36 @@ public class OriginVerificationFilter implements Filter {
         HttpServletResponse httpResponse = (HttpServletResponse) response;
         String requestPath = httpRequest.getRequestURI();
         if (!isProtectedEndpoint(requestPath)) {
-            chain.doFilter(request, response);
+            try {
+                chain.doFilter(request, response);
+            } catch (IOException | ServletException e) {
+                ExceptionUtils.handleClientDisconnect(e, LOGGER, httpRequest);
+            }
             return;
         }
-        if (OPTIONS_METHOD.equalsIgnoreCase(httpRequest.getMethod())) {
-            chain.doFilter(request, response);
+        if (AppConstants.OPTIONS_METHOD.equalsIgnoreCase(httpRequest.getMethod())) {
+            try {
+                chain.doFilter(request, response);
+            } catch (IOException | ServletException e) {
+                ExceptionUtils.handleClientDisconnect(e, LOGGER, httpRequest);
+            }
             return;
         }
         if (!isRequestAuthorized(httpRequest)) {
             LOGGER.warn("Unauthorized request blocked - Path: {}, Origin: {}, Referer: {}, RemoteAddr: {}, User-Agent: {}",
                     requestPath,
-                    httpRequest.getHeader(ORIGIN_HEADER),
-                    httpRequest.getHeader(REFERER_HEADER),
+                    httpRequest.getHeader(AppConstants.ORIGIN_HEADER),
+                    httpRequest.getHeader(AppConstants.REFERER_HEADER),
                     httpRequest.getRemoteAddr(),
-                    httpRequest.getHeader(USER_AGENT_HEADER));
+                    httpRequest.getHeader(AppConstants.USER_AGENT_HEADER));
             sendForbiddenResponse(httpResponse);
             return;
         }
-        chain.doFilter(request, response);
+        try {
+            chain.doFilter(request, response);
+        } catch (IOException | ServletException e) {
+            ExceptionUtils.handleClientDisconnect(e, LOGGER, httpRequest);
+        }
     }
 
     /**
@@ -104,10 +105,10 @@ public class OriginVerificationFilter implements Filter {
         if (requestPath == null) {
             return false;
         }
-        return requestPath.startsWith(BLOGS_PUBLISHED_PATH) ||
-                requestPath.contains(BLOGS_PUBLISHED_PATH) ||
-                requestPath.endsWith(VIEW_PATH) ||
-                requestPath.contains(VIEW_PATH);
+        return requestPath.startsWith(AppConstants.BLOGS_PUBLISHED_PATH) ||
+                requestPath.contains(AppConstants.BLOGS_PUBLISHED_PATH) ||
+                requestPath.endsWith(AppConstants.VIEW_PATH) ||
+                requestPath.contains(AppConstants.VIEW_PATH);
     }
 
     /**
@@ -117,10 +118,10 @@ public class OriginVerificationFilter implements Filter {
      * @return true if the request is authorized, false otherwise
      */
     private boolean isRequestAuthorized(HttpServletRequest request) {
-        String origin = request.getHeader(ORIGIN_HEADER);
-        String apiKey = request.getHeader(API_KEY_HEADER);
-        String referer = request.getHeader(REFERER_HEADER);
-        if (StringUtils.hasText(apiKey) && StringUtils.hasText(serverApiKey)) {
+        String origin = request.getHeader(AppConstants.ORIGIN_HEADER);
+        String apiKey = request.getHeader(AppConstants.API_KEY_HEADER);
+        String referer = request.getHeader(AppConstants.REFERER_HEADER);
+        if (StringUtils.hasText(apiKey) && isValidApiKey(serverApiKey)) {
             return serverApiKey.equals(apiKey);
         }
         if (StringUtils.hasText(origin)) {
@@ -146,7 +147,7 @@ public class OriginVerificationFilter implements Filter {
      * @return true if this appears to be an SSR/server request
      */
     private boolean isLikelySSRRequest(HttpServletRequest request) {
-        String origin = request.getHeader(ORIGIN_HEADER);
+        String origin = request.getHeader(AppConstants.ORIGIN_HEADER);
         if (!StringUtils.hasText(origin)) {
             LOGGER.debug("Detected server-to-server request (no Origin header) from: {}",
                     request.getRemoteAddr());
@@ -201,9 +202,23 @@ public class OriginVerificationFilter implements Filter {
     private void sendForbiddenResponse(HttpServletResponse response) throws IOException {
         response.setStatus(HttpStatus.FORBIDDEN.value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-        response.getWriter().write("""
-                {"error":"%s","status":403}
-                """.formatted("Request origin not authorized"));
+        String jsonResponse = """
+                {
+                    "error": "%s",
+                    "status": 403
+                }
+                """.formatted("Request origin not authorized");
+        response.getWriter().write(jsonResponse);
+    }
+
+    /**
+     * Validates that the API key is properly configured and not the literal "null" string.
+     *
+     * @param apiKey the API key to validate
+     * @return true if the API key is valid and configured, false otherwise
+     */
+    private boolean isValidApiKey(String apiKey) {
+        return StringUtils.hasText(apiKey) && !apiKey.equals("null");
     }
 
 }

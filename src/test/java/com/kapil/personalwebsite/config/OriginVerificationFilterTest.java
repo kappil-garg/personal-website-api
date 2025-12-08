@@ -14,7 +14,6 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -45,16 +44,12 @@ class OriginVerificationFilterTest {
 
     @BeforeEach
     void setUp() throws IOException {
-        filter = new OriginVerificationFilter();
         StringWriter responseWriter = new StringWriter();
         when(response.getWriter()).thenReturn(new PrintWriter(responseWriter));
     }
 
     private void initFilter(String allowedOrigins, String serverApiKey, boolean allowNoOriginForSSR) {
-        ReflectionTestUtils.setField(filter, "allowedOrigins", allowedOrigins);
-        ReflectionTestUtils.setField(filter, "serverApiKey", serverApiKey);
-        ReflectionTestUtils.setField(filter, "allowNoOriginForSSR", allowNoOriginForSSR);
-        filter.initialize();
+        filter = new OriginVerificationFilter(serverApiKey, allowedOrigins, allowNoOriginForSSR);
     }
 
     private void initFilter(String allowedOrigins, String serverApiKey) {
