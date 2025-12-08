@@ -28,14 +28,26 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @EnableWebSecurity
 public class SecurityConfig {
 
-    @Value("${admin.username}")
-    private String adminUsername;
+    private final long corsMaxAge;
+    private final String adminUsername;
+    private final String adminPassword;
+    private final String corsAllowedOrigins;
+    private final String corsAllowedMethods;
+    private final boolean corsAllowCredentials;
 
-    @Value("${admin.password}")
-    private String adminPassword;
-
-    @Value("${cors.allowed-origins:}")
-    private String corsAllowedOrigins;
+    public SecurityConfig(@Value("${cors.max-age}") long corsMaxAge,
+                          @Value("${admin.username}") String adminUsername,
+                          @Value("${admin.password}") String adminPassword,
+                          @Value("${cors.allowed-origins}") String corsAllowedOrigins,
+                          @Value("${cors.allowed-methods}") String corsAllowedMethods,
+                          @Value("${cors.allow-credentials}") boolean corsAllowCredentials) {
+        this.corsMaxAge = corsMaxAge;
+        this.adminUsername = adminUsername;
+        this.adminPassword = adminPassword;
+        this.corsAllowedOrigins = corsAllowedOrigins;
+        this.corsAllowedMethods = corsAllowedMethods;
+        this.corsAllowCredentials = corsAllowCredentials;
+    }
 
     /**
      * Configures HTTP security with Basic Authentication for admin endpoints.
@@ -54,6 +66,9 @@ public class SecurityConfig {
                         .requestMatchers("/blogs/published/**").permitAll()
                         .requestMatchers("/blogs/*/view").permitAll()
                         .requestMatchers(HttpMethod.GET, "/portfolio").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/experiences").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/projects").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/contact").permitAll()
                         .requestMatchers("/actuator/health").permitAll()
                         .requestMatchers("/blogs").authenticated()
                         .requestMatchers("/blogs/**").authenticated()
@@ -69,7 +84,7 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         // If not configured, default to localhost:4200 for development
-        String originsToUse = (corsAllowedOrigins == null || corsAllowedOrigins.trim().isEmpty())
+        String originsToUse = (corsAllowedOrigins == null || corsAllowedOrigins.trim().isEmpty() || corsAllowedOrigins.equals("null"))
                 ? "http://localhost:4200"
                 : corsAllowedOrigins;
         String[] origins = originsToUse.split(",");
@@ -79,10 +94,16 @@ public class SecurityConfig {
                 configuration.addAllowedOrigin(trimmedOrigin);
             }
         }
-        configuration.addAllowedMethod("*");
+        String[] methods = corsAllowedMethods.split(",");
+        for (String method : methods) {
+            String trimmedMethod = method.trim();
+            if (!trimmedMethod.isEmpty()) {
+                configuration.addAllowedMethod(trimmedMethod);
+            }
+        }
         configuration.addAllowedHeader("*");
-        configuration.setAllowCredentials(false);
-        configuration.setMaxAge(3600L);
+        configuration.setAllowCredentials(corsAllowCredentials);
+        configuration.setMaxAge(corsMaxAge);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;

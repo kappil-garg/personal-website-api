@@ -7,6 +7,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
 
 import java.util.Arrays;
 import java.util.List;
@@ -33,8 +34,10 @@ class BlogControllerTest {
         var response = blogController.getAllBlogs();
         assertNotNull(response);
         assertNotNull(response.getBody());
-        assertEquals(2, response.getBody().size());
-        assertEquals("Test Blog 1", response.getBody().getFirst().getTitle());
+        assertTrue(response.getBody().isSuccess());
+        assertNotNull(response.getBody().getData());
+        assertEquals(2, response.getBody().getData().size());
+        assertEquals("Test Blog 1", response.getBody().getData().getFirst().getTitle());
     }
 
     @Test
@@ -44,7 +47,9 @@ class BlogControllerTest {
         var response = blogController.getBlogBySlug("test-blog");
         assertNotNull(response);
         assertNotNull(response.getBody());
-        assertEquals("Test Blog", response.getBody().getTitle());
+        assertTrue(response.getBody().isSuccess());
+        assertNotNull(response.getBody().getData());
+        assertEquals("Test Blog", response.getBody().getData().getTitle());
     }
 
     @Test
@@ -52,7 +57,9 @@ class BlogControllerTest {
         when(blogAdminService.getBlogBySlug("non-existent")).thenReturn(Optional.empty());
         var response = blogController.getBlogBySlug("non-existent");
         assertNotNull(response);
-        assertNull(response.getBody());
+        assertNotNull(response.getBody());
+        assertFalse(response.getBody().isSuccess());
+        assertEquals(HttpStatus.NOT_FOUND.value(), response.getStatusCode().value());
     }
 
 }

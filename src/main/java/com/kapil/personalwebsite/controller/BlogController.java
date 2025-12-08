@@ -21,7 +21,6 @@ import java.util.Optional;
  * Provides endpoints for public blog access, admin management, and analytics.
  *
  * @author Kapil Garg
- * @version 3.0
  */
 @RestController
 @RequestMapping("/blogs")
@@ -40,10 +39,11 @@ public class BlogController {
      * @return a ResponseEntity containing the list of all blogs
      */
     @GetMapping
-    public ResponseEntity<List<Blog>> getAllBlogs() {
+    public ResponseEntity<ApiResponse<List<Blog>>> getAllBlogs() {
         LOGGER.info("GET /blogs - Fetching all blogs (admin)");
         List<Blog> blogs = blogAdminService.getAllBlogs();
-        return ResponseEntity.ok(blogs);
+        ApiResponse<List<Blog>> response = ApiResponse.success(blogs, "Blogs retrieved successfully");
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -53,11 +53,19 @@ public class BlogController {
      * @return a ResponseEntity containing the blog if found, or a 404 status if not found
      */
     @GetMapping("/{slug}")
-    public ResponseEntity<Blog> getBlogBySlug(@PathVariable String slug) {
+    public ResponseEntity<ApiResponse<Blog>> getBlogBySlug(@PathVariable String slug) {
         LOGGER.info("GET /blogs/{} - Fetching blog by slug (admin)", slug);
         Optional<Blog> blog = blogAdminService.getBlogBySlug(slug);
-        return blog.map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        if (blog.isPresent()) {
+            ApiResponse<Blog> response = ApiResponse.success(blog.get(),
+                    String.format("Blog with slug '%s' retrieved successfully", slug));
+            return ResponseEntity.ok(response);
+        } else {
+            ApiResponse<Blog> response = ApiResponse.error(
+                    String.format("Blog with slug '%s' not found", slug),
+                    HttpStatus.NOT_FOUND.value());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+        }
     }
 
     /**
@@ -67,11 +75,19 @@ public class BlogController {
      * @return a ResponseEntity containing the blog if found, or a 404 status if not found
      */
     @GetMapping("/id/{id}")
-    public ResponseEntity<Blog> getBlogById(@PathVariable String id) {
+    public ResponseEntity<ApiResponse<Blog>> getBlogById(@PathVariable String id) {
         LOGGER.info("GET /blogs/id/{} - Fetching blog by ID (admin)", id);
         Optional<Blog> blog = blogAdminService.getBlogById(id);
-        return blog.map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        if (blog.isPresent()) {
+            ApiResponse<Blog> response = ApiResponse.success(blog.get(),
+                    String.format("Blog with ID '%s' retrieved successfully", id));
+            return ResponseEntity.ok(response);
+        } else {
+            ApiResponse<Blog> response = ApiResponse.error(
+                    String.format("Blog with ID '%s' not found", id),
+                    HttpStatus.NOT_FOUND.value());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+        }
     }
 
     /**
@@ -153,10 +169,11 @@ public class BlogController {
      * @return a ResponseEntity containing the created blog
      */
     @PostMapping
-    public ResponseEntity<Blog> createBlog(@RequestBody Blog blog) {
+    public ResponseEntity<ApiResponse<Blog>> createBlog(@RequestBody Blog blog) {
         LOGGER.info("POST /blogs - Creating new blog: {} (admin)", blog.getTitle());
         Blog createdBlog = blogAdminService.createBlog(blog);
-        return ResponseEntity.status(HttpStatus.CREATED).body(createdBlog);
+        ApiResponse<Blog> response = ApiResponse.success(createdBlog, "Blog created successfully");
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     /**
@@ -167,10 +184,11 @@ public class BlogController {
      * @return a ResponseEntity containing the updated blog if found, or a 404 status if not found
      */
     @PutMapping("/{id}")
-    public ResponseEntity<Blog> updateBlog(@PathVariable String id, @RequestBody Blog blog) {
+    public ResponseEntity<ApiResponse<Blog>> updateBlog(@PathVariable String id, @RequestBody Blog blog) {
         LOGGER.info("PUT /blogs/{} - Updating blog (admin)", id);
         Blog updatedBlog = blogAdminService.updateBlog(id, blog);
-        return ResponseEntity.ok(updatedBlog);
+        ApiResponse<Blog> response = ApiResponse.success(updatedBlog, "Blog updated successfully");
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -193,10 +211,11 @@ public class BlogController {
      * @return a ResponseEntity containing the published blog if found, or a 404 status if not found
      */
     @PutMapping("/{id}/publish")
-    public ResponseEntity<Blog> publishBlog(@PathVariable String id) {
+    public ResponseEntity<ApiResponse<Blog>> publishBlog(@PathVariable String id) {
         LOGGER.info("PUT /blogs/{}/publish - Publishing blog", id);
         Blog publishedBlog = blogAdminService.publishBlog(id);
-        return ResponseEntity.ok(publishedBlog);
+        ApiResponse<Blog> response = ApiResponse.success(publishedBlog, "Blog published successfully");
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -206,10 +225,11 @@ public class BlogController {
      * @return a ResponseEntity containing the unpublished blog if found, or a 404 status if not found
      */
     @PutMapping("/{id}/unpublish")
-    public ResponseEntity<Blog> unpublishBlog(@PathVariable String id) {
+    public ResponseEntity<ApiResponse<Blog>> unpublishBlog(@PathVariable String id) {
         LOGGER.info("PUT /blogs/{}/unpublish - Unpublishing blog", id);
         Blog unpublishedBlog = blogAdminService.unpublishBlog(id);
-        return ResponseEntity.ok(unpublishedBlog);
+        ApiResponse<Blog> response = ApiResponse.success(unpublishedBlog, "Blog unpublished successfully");
+        return ResponseEntity.ok(response);
     }
 
 }
