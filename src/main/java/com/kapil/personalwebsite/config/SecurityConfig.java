@@ -41,12 +41,32 @@ public class SecurityConfig {
                           @Value("${cors.allowed-origins}") String corsAllowedOrigins,
                           @Value("${cors.allowed-methods}") String corsAllowedMethods,
                           @Value("${cors.allow-credentials}") boolean corsAllowCredentials) {
+        validateAdminCredentials(adminUsername, adminPassword);
         this.corsMaxAge = corsMaxAge;
         this.adminUsername = adminUsername;
         this.adminPassword = adminPassword;
         this.corsAllowedOrigins = corsAllowedOrigins;
         this.corsAllowedMethods = corsAllowedMethods;
         this.corsAllowCredentials = corsAllowCredentials;
+    }
+
+    /**
+     * Validates that admin credentials are provided.
+     *
+     * @param adminUsername the admin username
+     * @param adminPassword the admin password
+     */
+    private static void validateAdminCredentials(String adminUsername, String adminPassword) {
+        if (adminUsername == null || adminUsername.trim().isEmpty()) {
+            throw new IllegalStateException(
+                    "Admin username is required but not configured. " +
+                    "Please set the ADMIN_USERNAME environment variable.");
+        }
+        if (adminPassword == null || adminPassword.trim().isEmpty()) {
+            throw new IllegalStateException(
+                    "Admin password is required but not configured. " +
+                    "Please set the ADMIN_PASSWORD environment variable.");
+        }
     }
 
     /**

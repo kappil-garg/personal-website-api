@@ -34,13 +34,21 @@ public class RateLimitFilter implements Filter {
 
     private final int maxRequests;
     private final int windowMinutes;
+    private final boolean trustProxyHeaders;
 
     private final Map<String, RequestWindow> requestCache = new ConcurrentHashMap<>();
 
     public RateLimitFilter(@Value("${rate.limit.contact.max-requests}") int maxRequests,
-                           @Value("${rate.limit.contact.window-minutes}") int windowMinutes) {
+                           @Value("${rate.limit.contact.window-minutes}") int windowMinutes,
+                           @Value("${rate.limit.trust-proxy-headers:false}") boolean trustProxyHeaders) {
         this.maxRequests = maxRequests;
         this.windowMinutes = windowMinutes;
+        this.trustProxyHeaders = trustProxyHeaders;
+        
+        if (trustProxyHeaders) {
+            LOGGER.warn("Proxy header trust is enabled. Ensure your proxy/load balancer strips " +
+                    "client-supplied X-Forwarded-For and X-Real-IP headers to prevent rate limit bypass.");
+        }
     }
 
     @Override
@@ -85,19 +93,22 @@ public class RateLimitFilter implements Filter {
     }
 
     /**
-     * Extracts the client IP address from the request, considering possible proxy headers.
+     * Extracts the client IP address from the request considering proxy headers if configured.
      *
      * @param request the HTTP servlet request
      * @return the client IP address
      */
     private String getClientIp(HttpServletRequest request) {
+        if (!trustProxyHeaders) {
+            return request.getRemoteAddr();
+        }
         String xForwardedFor = request.getHeader("X-Forwarded-For");
-        if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
+        if (xForwardedFor != null && !xForwardedFor.trim().isEmpty()) {
             return xForwardedFor.split(",")[0].trim();
         }
         String xRealIp = request.getHeader("X-Real-IP");
-        if (xRealIp != null && !xRealIp.isEmpty()) {
-            return xRealIp;
+        if (xRealIp != null && !xRealIp.trim().isEmpty()) {
+            return xRealIp.trim();
         }
         return request.getRemoteAddr();
     }
@@ -112,12 +123,15 @@ public class RateLimitFilter implements Filter {
         long currentTime = Instant.now().toEpochMilli();
         long windowStart = currentTime - ((long) windowMinutes * 60 * 1000L);
         RequestWindow window = requestCache.computeIfAbsent(clientIp, k -> new RequestWindow());
-        window.removeOldRequests(windowStart);
-        if (window.getRequestCount() >= maxRequests) {
-            return false;
+        // Synchronize on the window object to ensure thread safety for this IP's request tracking
+        synchronized (window) {
+            window.removeOldRequests(windowStart);
+            if (window.getRequestCount() >= maxRequests) {
+                return false;
+            }
+            window.addRequest(currentTime);
+            return true;
         }
-        window.addRequest(currentTime);
-        return true;
     }
 
     /**

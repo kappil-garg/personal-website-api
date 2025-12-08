@@ -40,7 +40,7 @@ class ContactServiceImplTest {
 
     private ContactServiceImpl createContactService(String recipientEmail, String senderEmail,
                                                     String websiteDomain, JavaMailSender mailSender) {
-        return new ContactServiceImpl(personalInfoService, mailSender, recipientEmail, senderEmail, websiteDomain);
+        return new ContactServiceImpl(personalInfoService, mailSender, senderEmail, recipientEmail, websiteDomain);
     }
 
     @BeforeEach

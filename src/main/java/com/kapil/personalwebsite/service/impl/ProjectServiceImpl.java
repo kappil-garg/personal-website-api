@@ -26,7 +26,7 @@ public class ProjectServiceImpl implements ProjectService {
     private final ProjectRepository projectRepository;
 
     /**
-     * Retrieves all active projects ordered by display order (most recent first).
+     * Retrieves all active projects ordered by display order (highest display order first).
      *
      * @return a list of all active projects
      */

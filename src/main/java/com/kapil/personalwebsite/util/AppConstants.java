@@ -6,7 +6,7 @@ package com.kapil.personalwebsite.util;
  *
  * @author Kapil Garg
  */
-public class AppConstants {
+public final class AppConstants {
 
     public static final String BROKEN_PIPE = "broken pipe";
     public static final String CLIENT_ABORT = "clientabort";

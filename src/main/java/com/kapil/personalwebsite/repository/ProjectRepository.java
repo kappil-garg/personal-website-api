@@ -15,9 +15,9 @@ import java.util.List;
 public interface ProjectRepository extends MongoRepository<Project, String> {
 
     /**
-     * Finds all active projects ordered by display order descending (most recent first).
+     * Finds all active projects ordered by display order (highest display order first).
      *
-     * @return a list of active projects sorted by display order
+     * @return a list of active projects sorted by display order (descending)
      */
     List<Project> findByIsActiveTrueOrderByDisplayOrderDesc();
 

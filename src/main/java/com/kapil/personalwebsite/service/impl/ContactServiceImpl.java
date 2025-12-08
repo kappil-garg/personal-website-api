@@ -143,7 +143,8 @@ public class ContactServiceImpl implements ContactService {
         body.append("\nMessage:\n");
         body.append(StringUtils.sanitizeForEmailBody(contactRequest.getMessage())).append("\n\n");
         body.append("---\n");
-        body.append("This message was sent from the contact form on ").append(websiteDomain);
+        body.append("This message was sent from the contact form on ")
+                .append(StringUtils.sanitizeForEmailBody(websiteDomain));
         return body.toString();
     }
 
