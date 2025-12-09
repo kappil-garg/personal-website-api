@@ -31,7 +31,7 @@ public class EmailServiceConfig {
      */
     @Bean
     @Primary
-    public EmailService emailService(@Value("${email.provider:http-api}") String emailProvider,
+    public EmailService emailService(@Value("${email.provider}") String emailProvider,
                                      HttpApiEmailService httpApiEmailService,
                                      SmtpEmailService smtpEmailService) {
         if ("smtp".equalsIgnoreCase(emailProvider)) {

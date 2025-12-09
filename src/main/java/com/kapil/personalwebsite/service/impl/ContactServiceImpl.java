@@ -3,6 +3,7 @@ package com.kapil.personalwebsite.service.impl;
 import com.kapil.personalwebsite.dto.ContactRequest;
 import com.kapil.personalwebsite.entity.PersonalInfo;
 import com.kapil.personalwebsite.exception.EmailSendingException;
+import com.kapil.personalwebsite.exception.EmailServiceException;
 import com.kapil.personalwebsite.service.ContactService;
 import com.kapil.personalwebsite.service.PersonalInfoService;
 import com.kapil.personalwebsite.service.email.EmailService;
@@ -60,9 +61,9 @@ public class ContactServiceImpl implements ContactService {
         try {
             String subject = buildEmailSubject(contactRequest);
             String body = EmailTemplateUtils.buildContactFormEmailBody(contactRequest, websiteDomain);
-            emailService.sendContactEmail(contactRequest, toEmail, senderEmail, subject, body);
+            emailService.sendContactEmail(toEmail, senderEmail, subject, body);
             return AppConstants.MESSAGE_SENT_SUCCESS;
-        } catch (Exception e) {
+        } catch (EmailServiceException e) {
             LOGGER.error("Failed to send contact form email", e);
             throw new EmailSendingException("Failed to send message. Please try again later.", e);
         }

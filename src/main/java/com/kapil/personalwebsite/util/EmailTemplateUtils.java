@@ -21,12 +21,11 @@ public final class EmailTemplateUtils {
      * @return the HTML email body
      */
     public static String buildContactFormEmailBody(ContactRequest contactRequest, String websiteDomain) {
-        String name = StringUtils.sanitizeForEmailBody(contactRequest.getName());
-        String email = StringUtils.sanitizeForEmailBody(contactRequest.getEmail());
-        String subject = StringUtils.sanitizeForEmailBody(contactRequest.getSubject());
-        String message = StringUtils.sanitizeForEmailBody(contactRequest.getMessage())
-                .replace("\n", "<br>");
-        String domain = StringUtils.sanitizeForEmailBody(websiteDomain);
+        String name = StringUtils.escapeAndSanitizeForEmailBody(contactRequest.getName());
+        String email = StringUtils.escapeAndSanitizeForEmailBody(contactRequest.getEmail());
+        String subject = StringUtils.escapeAndSanitizeForEmailBody(contactRequest.getSubject());
+        String message = StringUtils.escapeAndSanitizeForEmailBody(contactRequest.getMessage()).replace("\n", "<br>");
+        String domain = StringUtils.escapeAndSanitizeForEmailBody(websiteDomain);
         return String.format("""
                 <!DOCTYPE html>
                 <html>
@@ -147,7 +146,7 @@ public final class EmailTemplateUtils {
                         <div class="field-label">Subject</div>
                         <div class="field-value">%s</div>
                     </div>
-                    """, subject);
+                    """, StringUtils.escapeAndSanitizeForEmailBody(subject));
         }
         return "";
     }

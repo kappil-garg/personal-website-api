@@ -1,7 +1,10 @@
 package com.kapil.personalwebsite.service.email.impl;
 
-import com.kapil.personalwebsite.dto.ContactRequest;
+import com.kapil.personalwebsite.exception.EmailServiceException;
 import com.kapil.personalwebsite.service.email.EmailService;
+import com.kapil.personalwebsite.service.email.http.HttpEmailProvider;
+import com.kapil.personalwebsite.service.email.http.HttpEmailRequestBuilder;
+import com.kapil.personalwebsite.service.email.http.HttpEmailRequestBuilderFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -11,8 +14,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -25,61 +26,44 @@ public class HttpApiEmailService implements EmailService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(HttpApiEmailService.class);
 
-    private final RestTemplate restTemplate;
-
     private final String apiKey;
     private final String apiUrl;
 
+    private final RestTemplate restTemplate;
+    private final HttpEmailRequestBuilder requestBuilder;
+
     public HttpApiEmailService(@Value("${email.http-api.api-key}") String apiKey,
-                               @Value("${email.http-api.url}") String apiUrl) {
-        this.restTemplate = new RestTemplate();
+                               @Value("${email.http-api.url}") String apiUrl,
+                               @Value("${email.http-api.provider:brevo}") String provider,
+                               RestTemplate restTemplate,
+                               HttpEmailRequestBuilderFactory requestBuilderFactory) {
         this.apiKey = apiKey;
         this.apiUrl = apiUrl;
+        this.restTemplate = restTemplate;
+        String resolvedProvider = provider == null || provider.isBlank() ? HttpEmailProvider.BREVO : provider;
+        this.requestBuilder = requestBuilderFactory.get(resolvedProvider);
     }
 
     @Override
-    public void sendContactEmail(ContactRequest contactRequest, String toEmail, String fromEmail,
-                                 String subject, String body) throws Exception {
+    public void sendContactEmail(String toEmail, String fromEmail, String subject, String body) throws EmailServiceException {
         if (apiKey == null || apiKey.trim().isEmpty()) {
-            throw new IllegalStateException("HTTP API key is not configured");
+            throw new EmailServiceException("HTTP API key is not configured");
         }
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             headers.set("api-key", apiKey);
-            Map<String, Object> requestBody = buildRequestBody(toEmail, fromEmail, subject, body);
+            Map<String, Object> requestBody = requestBuilder.buildRequestBody(toEmail, fromEmail, subject, body);
             ResponseEntity<Map<String, Object>> response = sendEmailRequest(requestBody, headers);
             if (!response.getStatusCode().is2xxSuccessful()) {
                 LOGGER.warn("HTTP API returned non-2xx status: {}", response.getStatusCode());
-                throw new Exception("Email sending failed with status: " + response.getStatusCode());
+                throw new EmailServiceException("Email sending failed with status: " + response.getStatusCode());
             }
             LOGGER.info("Contact form email sent successfully via HTTP API");
         } catch (RestClientException e) {
             LOGGER.error("Failed to send email via HTTP API", e);
-            throw new Exception("Failed to send email via HTTP API: " + e.getMessage(), e);
+            throw new EmailServiceException("Failed to send email via HTTP API", e);
         }
-    }
-
-    /**
-     * Builds the request body for the email API.
-     *
-     * @param toEmail   the recipient email address
-     * @param fromEmail the sender email address
-     * @param subject   the email subject
-     * @param body      the email body content
-     * @return the request body map
-     */
-    private Map<String, Object> buildRequestBody(String toEmail, String fromEmail, String subject, String body) {
-        Map<String, Object> requestBody = new HashMap<>();
-        Map<String, String> sender = new HashMap<>();
-        sender.put("email", fromEmail);
-        requestBody.put("sender", sender);
-        Map<String, String> to = new HashMap<>();
-        to.put("email", toEmail);
-        requestBody.put("to", List.of(to));
-        requestBody.put("subject", subject);
-        requestBody.put("htmlContent", body);
-        return requestBody;
     }
 
     /**
