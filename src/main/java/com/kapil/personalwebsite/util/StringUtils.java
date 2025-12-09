@@ -50,6 +50,40 @@ public final class StringUtils {
     }
 
     /**
+     * Escapes HTML special characters to their entity equivalents.
+     *
+     * @param input the string to escape
+     * @return the escaped string, or empty string if input is null
+     */
+    public static String escapeHtml(String input) {
+        if (input == null) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder(input.length());
+        for (char c : input.toCharArray()) {
+            switch (c) {
+                case '<' -> sb.append("&lt;");
+                case '>' -> sb.append("&gt;");
+                case '&' -> sb.append("&amp;");
+                case '"' -> sb.append("&quot;");
+                case '\'' -> sb.append("&#x27;");
+                default -> sb.append(c);
+            }
+        }
+        return sb.toString();
+    }
+
+    /**
+     * Sanitizes input for email body and escapes HTML entities.
+     *
+     * @param input the input string
+     * @return sanitized and HTML-escaped string (empty if null)
+     */
+    public static String escapeAndSanitizeForEmailBody(String input) {
+        return escapeHtml(sanitizeForEmailBody(input));
+    }
+
+    /**
      * Checks if a string is null, empty, or contains only whitespace.
      *
      * @param str the string to check
