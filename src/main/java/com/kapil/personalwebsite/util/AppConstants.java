@@ -26,9 +26,9 @@ public final class AppConstants {
     public static final String USER_AGENT_HEADER = "User-Agent";
     public static final String BLOGS_PUBLISHED_PATH = "/blogs/published";
 
+    public static final String EMAIL_NOT_CONFIGURED = "Email service not configured";
     public static final String SENDER_EMAIL_NOT_CONFIGURED = "Sender email not configured";
     public static final String RECIPIENT_EMAIL_NOT_CONFIGURED = "Recipient email not configured";
-    public static final String JAVA_MAIL_SENDER_NOT_CONFIGURED = "JavaMailSender not configured";
 
     public static final String MESSAGE_SENT_SUCCESS = "Message sent successfully! I'll get back to you soon.";
 
