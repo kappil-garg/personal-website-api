@@ -1,5 +1,6 @@
 package com.kapil.personalwebsite.config;
 
+import com.kapil.personalwebsite.util.AppConstants;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -7,6 +8,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -60,12 +62,12 @@ public class SecurityConfig {
         if (adminUsername == null || adminUsername.trim().isEmpty()) {
             throw new IllegalStateException(
                     "Admin username is required but not configured. " +
-                    "Please set the ADMIN_USERNAME environment variable.");
+                            "Please set the ADMIN_USERNAME environment variable.");
         }
         if (adminPassword == null || adminPassword.trim().isEmpty()) {
             throw new IllegalStateException(
                     "Admin password is required but not configured. " +
-                    "Please set the ADMIN_PASSWORD environment variable.");
+                            "Please set the ADMIN_PASSWORD environment variable.");
         }
     }
 
@@ -81,6 +83,16 @@ public class SecurityConfig {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .headers(headers -> headers
+                        .frameOptions(HeadersConfigurer.FrameOptionsConfig::deny)
+                        .contentTypeOptions(contentTypeOptions -> {
+                        })
+                        .httpStrictTransportSecurity(hsts -> hsts
+                                .maxAgeInSeconds(31536000)
+                        )
+                        .xssProtection(xss -> {
+                        })
+                )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/blogs/published/**").permitAll()
@@ -121,7 +133,13 @@ public class SecurityConfig {
                 configuration.addAllowedMethod(trimmedMethod);
             }
         }
-        configuration.addAllowedHeader("*");
+        configuration.addAllowedHeader(AppConstants.CONTENT_TYPE_HEADER);
+        configuration.addAllowedHeader(AppConstants.AUTHORIZATION_HEADER);
+        configuration.addAllowedHeader(AppConstants.API_KEY_HEADER);
+        configuration.addAllowedHeader(AppConstants.ORIGIN_HEADER);
+        configuration.addAllowedHeader(AppConstants.REFERER_HEADER);
+        configuration.addAllowedHeader(AppConstants.ACCEPT_HEADER);
+        configuration.addAllowedHeader(AppConstants.USER_AGENT_HEADER);
         configuration.setAllowCredentials(corsAllowCredentials);
         configuration.setMaxAge(corsMaxAge);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
@@ -139,7 +157,7 @@ public class SecurityConfig {
         UserDetails admin = User.builder()
                 .username(adminUsername)
                 .password(passwordEncoder().encode(adminPassword))
-                .roles("ADMIN")
+                .roles(AppConstants.ADMIN_ROLE)
                 .build();
         return new InMemoryUserDetailsManager(admin);
     }

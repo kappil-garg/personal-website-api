@@ -1,5 +1,7 @@
 package com.kapil.personalwebsite.service.email.http;
 
+import com.kapil.personalwebsite.util.AppConstants;
+
 /**
  * Constants for supported HTTP email providers.
  *
@@ -10,7 +12,7 @@ public final class HttpEmailProvider {
     public static final String BREVO = "brevo";
 
     private HttpEmailProvider() {
-        throw new IllegalStateException("Utility class cannot be instantiated");
+        throw new IllegalStateException(AppConstants.UTILITY_CLASS_INSTANTIATION_MSG);
     }
 
     /**

@@ -9,7 +9,7 @@ package com.kapil.personalwebsite.util;
 public final class StringUtils {
 
     private StringUtils() {
-        throw new UnsupportedOperationException("Utility class cannot be instantiated");
+        throw new UnsupportedOperationException(AppConstants.UTILITY_CLASS_INSTANTIATION_MSG);
     }
 
     /**

@@ -15,7 +15,7 @@ import java.io.IOException;
 public final class ExceptionUtils {
 
     private ExceptionUtils() {
-        throw new UnsupportedOperationException("Utility class cannot be instantiated");
+        throw new UnsupportedOperationException(AppConstants.UTILITY_CLASS_INSTANTIATION_MSG);
     }
 
     /**
