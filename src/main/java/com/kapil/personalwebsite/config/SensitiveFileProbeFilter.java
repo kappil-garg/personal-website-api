@@ -89,10 +89,13 @@ public class SensitiveFileProbeFilter implements Filter {
             this.sensitivePatterns = Arrays.stream(blockedPaths.split(","))
                     .map(String::trim)
                     .filter(StringUtils::hasText)
+                    .map(String::toLowerCase)
                     .collect(Collectors.toList());
             LOGGER.info("SensitiveFileProbeFilter initialized with {} custom blocked paths", sensitivePatterns.size());
         } else {
-            this.sensitivePatterns = new ArrayList<>(DEFAULT_SENSITIVE_PATTERNS);
+            this.sensitivePatterns = DEFAULT_SENSITIVE_PATTERNS.stream()
+                    .map(String::toLowerCase)
+                    .collect(Collectors.toCollection(ArrayList::new));
             LOGGER.info("SensitiveFileProbeFilter initialized with {} default blocked paths", sensitivePatterns.size());
         }
     }
@@ -133,9 +136,7 @@ public class SensitiveFileProbeFilter implements Filter {
      * @return true if the path matches a sensitive pattern, false otherwise
      */
     private boolean isSensitivePath(String normalizedPath) {
-        return sensitivePatterns.stream()
-                .anyMatch(pattern -> normalizedPath.startsWith(pattern.toLowerCase()) ||
-                        normalizedPath.contains(pattern.toLowerCase()));
+        return sensitivePatterns.stream().anyMatch(normalizedPath::startsWith);
     }
 
     /**
@@ -169,18 +170,7 @@ public class SensitiveFileProbeFilter implements Filter {
         if (remoteAddr != null && !remoteAddr.isEmpty() && !remoteAddr.equals("0:0:0:0:0:0:0:1")) {
             return remoteAddr;
         }
-        String xForwardedFor = request.getHeader("X-Forwarded-For");
-        if (StringUtils.hasText(xForwardedFor)) {
-            String[] ips = xForwardedFor.split(",");
-            if (ips.length > 0) {
-                return ips[0].trim();
-            }
-        }
-        String xRealIp = request.getHeader("X-Real-IP");
-        if (StringUtils.hasText(xRealIp)) {
-            return xRealIp.trim();
-        }
-        return remoteAddr != null ? remoteAddr : "unknown";
+        return "unknown";
     }
 
 }

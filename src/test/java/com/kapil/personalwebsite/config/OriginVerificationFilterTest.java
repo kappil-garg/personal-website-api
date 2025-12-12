@@ -18,8 +18,9 @@ import org.springframework.http.MediaType;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.lang.reflect.Method;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 /**
@@ -271,6 +272,75 @@ class OriginVerificationFilterTest {
             verify(response).setStatus(HttpStatus.FORBIDDEN.value());
         }
 
+    }
+
+    @Nested
+    @DisplayName("Constant time comparison")
+    class ConstantTimeEqualsTests {
+
+        private Method constantTimeEqualsMethod;
+
+        @BeforeEach
+        void initMethod() throws Exception {
+            initFilter("https://example.com", "server-secret-key");
+            constantTimeEqualsMethod = OriginVerificationFilter.class
+                    .getDeclaredMethod("constantTimeEquals", String.class, String.class);
+            constantTimeEqualsMethod.setAccessible(true);
+        }
+
+        private boolean invokeConstantTimeEquals(String a, String b) throws Exception {
+            return (boolean) constantTimeEqualsMethod.invoke(filter, a, b);
+        }
+
+        @Test
+        @DisplayName("Returns true for identical strings")
+        void shouldReturnTrueForIdenticalStrings() throws Exception {
+            assertTrue(invokeConstantTimeEquals("secret", "secret"));
+        }
+
+        @Test
+        @DisplayName("Returns false for different lengths")
+        void shouldReturnFalseForDifferentLengths() throws Exception {
+            assertFalse(invokeConstantTimeEquals("secret", "secret123"));
+        }
+
+        @Test
+        @DisplayName("Returns false when either value is null")
+        void shouldReturnFalseForNulls() throws Exception {
+            assertFalse(invokeConstantTimeEquals(null, "secret"));
+            assertFalse(invokeConstantTimeEquals("secret", null));
+        }
+
+        @Test
+        @DisplayName("Handles empty strings safely")
+        void shouldHandleEmptyStrings() throws Exception {
+            assertTrue(invokeConstantTimeEquals("", ""));
+            assertFalse(invokeConstantTimeEquals("", "a"));
+        }
+
+        @Test
+        @DisplayName("Uses constant-time comparison for same-length inputs")
+        void shouldBehaveInConstantTimeForSameLength() throws Exception {
+            String expected = "server-secret-key";
+            String different = "server-secret-kex";
+            // Warm up JIT
+            invokeConstantTimeEquals(expected, different);
+            long equalDuration = measureComparisons(expected, expected);
+            long differentDuration = measureComparisons(expected, different);
+            long max = Math.max(equalDuration, differentDuration);
+            long min = Math.min(equalDuration, differentDuration);
+            // Allowable variance: 30% plus 1ms cushion to account for scheduler noise.
+            assertTrue(max - min < (max * 0.30) + 1_000_000,
+                    "Comparison time should not differ significantly for same-length inputs");
+        }
+
+        private long measureComparisons(String a, String b) throws Exception {
+            long start = System.nanoTime();
+            for (int i = 0; i < 50_000; i++) {
+                invokeConstantTimeEquals(a, b);
+            }
+            return System.nanoTime() - start;
+        }
     }
 
 }

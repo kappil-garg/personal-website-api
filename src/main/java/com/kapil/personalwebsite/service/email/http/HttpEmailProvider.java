@@ -12,7 +12,7 @@ public final class HttpEmailProvider {
     public static final String BREVO = "brevo";
 
     private HttpEmailProvider() {
-        throw new IllegalStateException(AppConstants.UTILITY_CLASS_INSTANTIATION_MSG);
+        throw new UnsupportedOperationException(AppConstants.UTILITY_CLASS_INSTANTIATION_MSG);
     }
 
     /**

@@ -39,7 +39,7 @@ public final class AppConstants {
     public static final String THANK_YOU_FOR_CONTACTING = "Thank you for contacting me. I will get back to you soon.";
 
     private AppConstants() {
-        throw new UnsupportedOperationException(AppConstants.UTILITY_CLASS_INSTANTIATION_MSG);
+        throw new UnsupportedOperationException("Utility class cannot be instantiated");
     }
 
 }
