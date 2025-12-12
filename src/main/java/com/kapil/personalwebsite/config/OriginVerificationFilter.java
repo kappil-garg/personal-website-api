@@ -16,14 +16,15 @@ import org.springframework.util.StringUtils;
 
 import java.io.IOException;
 import java.net.URI;
+import java.security.MessageDigest;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * Strict origin verification filter for published blog endpoints and view endpoint.
- * Allows requests only from configured allowed origins or with valid API key for server-to-server requests.
+ * Strict origin verification filter for ALL API endpoints.
+ * Protects all endpoints from unauthorized usage by verifying request origin.
  *
  * @author Kapil Garg
  */
@@ -32,6 +33,15 @@ import java.util.stream.Collectors;
 public class OriginVerificationFilter implements Filter {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OriginVerificationFilter.class);
+
+    /**
+     * Paths that are excluded from origin verification.
+     * These endpoints are either monitored externally or protected by other mechanisms.
+     */
+    private static final Set<String> EXCLUDED_PATHS = Set.of(
+            "/actuator/health",
+            "/actuator/info"
+    );
 
     private final String serverApiKey;
     private final boolean allowNoOriginForSSR;
@@ -42,7 +52,6 @@ public class OriginVerificationFilter implements Filter {
                                     @Value("${ssr.allow-no-origin}") boolean allowNoOriginForSSR) {
         this.serverApiKey = serverApiKey;
         this.allowNoOriginForSSR = allowNoOriginForSSR;
-        // Initialize allowed origins set
         if (StringUtils.hasText(allowedOrigins)) {
             this.allowedOriginsSet = Arrays.stream(allowedOrigins.split(","))
                     .map(String::trim)
@@ -52,7 +61,7 @@ public class OriginVerificationFilter implements Filter {
                     allowedOriginsSet.size(), allowNoOriginForSSR);
         } else {
             this.allowedOriginsSet = Collections.emptySet();
-            LOGGER.warn("No allowed origins configured for OriginVerificationFilter");
+            LOGGER.warn("No allowed origins configured for OriginVerificationFilter. All requests without valid API key will be blocked.");
         }
     }
 
@@ -62,7 +71,7 @@ public class OriginVerificationFilter implements Filter {
         HttpServletRequest httpRequest = (HttpServletRequest) request;
         HttpServletResponse httpResponse = (HttpServletResponse) response;
         String requestPath = httpRequest.getRequestURI();
-        if (!isProtectedEndpoint(requestPath)) {
+        if (isExcludedPath(requestPath)) {
             try {
                 chain.doFilter(request, response);
             } catch (IOException | ServletException e) {
@@ -96,19 +105,16 @@ public class OriginVerificationFilter implements Filter {
     }
 
     /**
-     * Check if the request path is for protected endpoints.
+     * Check if the request path is excluded from origin verification.
      *
      * @param requestPath the request URI path
-     * @return true if the path is protected, false otherwise
+     * @return true if the path is excluded, false otherwise
      */
-    private boolean isProtectedEndpoint(String requestPath) {
+    private boolean isExcludedPath(String requestPath) {
         if (requestPath == null) {
             return false;
         }
-        return requestPath.startsWith(AppConstants.BLOGS_PUBLISHED_PATH) ||
-                requestPath.contains(AppConstants.BLOGS_PUBLISHED_PATH) ||
-                requestPath.endsWith(AppConstants.VIEW_PATH) ||
-                requestPath.contains(AppConstants.VIEW_PATH);
+        return EXCLUDED_PATHS.stream().anyMatch(requestPath::startsWith);
     }
 
     /**
@@ -122,7 +128,7 @@ public class OriginVerificationFilter implements Filter {
         String apiKey = request.getHeader(AppConstants.API_KEY_HEADER);
         String referer = request.getHeader(AppConstants.REFERER_HEADER);
         if (StringUtils.hasText(apiKey) && isValidApiKey(serverApiKey)) {
-            return serverApiKey.equals(apiKey);
+            return constantTimeEquals(serverApiKey, apiKey);
         }
         if (StringUtils.hasText(origin)) {
             return isAllowedOrigin(origin);
@@ -219,6 +225,25 @@ public class OriginVerificationFilter implements Filter {
      */
     private boolean isValidApiKey(String apiKey) {
         return StringUtils.hasText(apiKey) && !apiKey.equals("null");
+    }
+
+    /**
+     * Constant-time string comparison to prevent timing attacks for API key validation.
+     *
+     * @param a first string
+     * @param b second string
+     * @return true if strings are equal, false otherwise
+     */
+    private boolean constantTimeEquals(String a, String b) {
+        if (a == null || b == null) {
+            return false;
+        }
+        if (a.length() != b.length()) {
+            return false;
+        }
+        byte[] aBytes = a.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        byte[] bBytes = b.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        return MessageDigest.isEqual(aBytes, bBytes);
     }
 
 }

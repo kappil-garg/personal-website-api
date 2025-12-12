@@ -12,6 +12,8 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.time.LocalDateTime;
 import java.util.stream.Collectors;
@@ -127,16 +129,49 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Handles all other unexpected exceptions.
+     * Handles NoResourceFoundException (404 for static resources).
+     * This prevents 500 errors when Spring tries to serve non-existent static resources.
+     *
+     * @param ex      the exception
+     * @param request the HTTP request
+     * @return a ResponseEntity with 404 error details
+     */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNoResourceFound(NoResourceFoundException ex,
+                                                               HttpServletRequest request) {
+        String resourcePath = ex.getResourcePath();
+        LOGGER.debug("Static resource not found: {}", resourcePath);
+        return createErrorResponse(HttpStatus.NOT_FOUND, "Resource Not Found",
+                "The requested resource was not found", request);
+    }
+
+    /**
+     * Handles NoHandlerFoundException (404 for missing endpoints).
+     *
+     * @param ex      the exception
+     * @param request the HTTP request
+     * @return a ResponseEntity with 404 error details
+     */
+    @ExceptionHandler(NoHandlerFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNoHandlerFound(NoHandlerFoundException ex,
+                                                              HttpServletRequest request) {
+        LOGGER.debug("No handler found for: {}", request.getRequestURI());
+        return createErrorResponse(HttpStatus.NOT_FOUND, "Endpoint Not Found",
+                "The requested endpoint was not found", request);
+    }
+
+    /**
+     * Handles all other unexpected exceptions to ensure consistent error responses.
      *
      * @param ex      the exception
      * @param request the HTTP request
      */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGenericException(Exception ex, HttpServletRequest request) {
-        LOGGER.error("Unexpected error occurred: ", ex);
+        String requestPath = request.getRequestURI();
+        LOGGER.error("Unexpected error occurred for path: {} - Error: {}", requestPath, ex.getMessage(), ex);
         return createErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Internal Server Error",
-                "An unexpected error occurred", request);
+                "An unexpected error occurred. Please try again later.", request);
     }
 
     /**

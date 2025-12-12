@@ -10,7 +10,7 @@ import com.kapil.personalwebsite.dto.ContactRequest;
 public final class EmailTemplateUtils {
 
     private EmailTemplateUtils() {
-        throw new UnsupportedOperationException("Utility class cannot be instantiated");
+        throw new UnsupportedOperationException(AppConstants.UTILITY_CLASS_INSTANTIATION_MSG);
     }
 
     /**
