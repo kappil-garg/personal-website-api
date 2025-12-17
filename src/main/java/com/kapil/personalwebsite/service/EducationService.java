@@ -13,7 +13,7 @@ import java.util.List;
 public interface EducationService {
 
     /**
-     * Retrieves all educations ordered by display order.
+     * Retrieves all educations.
      *
      * @return a list of all educations
      */

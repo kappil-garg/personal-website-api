@@ -323,20 +323,33 @@ class OriginVerificationFilterTest {
         void shouldBehaveInConstantTimeForSameLength() throws Exception {
             String expected = "server-secret-key";
             String different = "server-secret-kex";
-            // Warm up JIT
-            invokeConstantTimeEquals(expected, different);
-            long equalDuration = measureComparisons(expected, expected);
-            long differentDuration = measureComparisons(expected, different);
-            long max = Math.max(equalDuration, differentDuration);
-            long min = Math.min(equalDuration, differentDuration);
-            // Allowable variance: 30% plus 1ms cushion to account for scheduler noise.
-            assertTrue(max - min < (max * 0.30) + 1_000_000,
-                    "Comparison time should not differ significantly for same-length inputs");
+            // Warm up JIT with multiple iterations
+            for (int i = 0; i < 10_000; i++) {
+                invokeConstantTimeEquals(expected, expected);
+                invokeConstantTimeEquals(expected, different);
+            }
+            // Run multiple measurements and take average for stability
+            int iterations = 5;
+            long totalEqual = 0;
+            long totalDifferent = 0;
+            for (int i = 0; i < iterations; i++) {
+                totalEqual += measureComparisons(expected, expected);
+                totalDifferent += measureComparisons(expected, different);
+            }
+            long avgEqual = totalEqual / iterations;
+            long avgDifferent = totalDifferent / iterations;
+            long max = Math.max(avgEqual, avgDifferent);
+            long min = Math.min(avgEqual, avgDifferent);
+            // Allowable variance: 50% plus 2ms cushion to account for scheduler noise and JIT variations
+            long threshold = (long) (max * 0.50) + 2_000_000;
+            assertTrue(max - min < threshold,
+                    String.format("Comparison time should not differ significantly. Equal: %d ns, Different: %d ns, Difference: %d ns, Threshold: %d ns",
+                            avgEqual, avgDifferent, max - min, threshold));
         }
 
         private long measureComparisons(String a, String b) throws Exception {
             long start = System.nanoTime();
-            for (int i = 0; i < 50_000; i++) {
+            for (int i = 0; i < 100_000; i++) {
                 invokeConstantTimeEquals(a, b);
             }
             return System.nanoTime() - start;

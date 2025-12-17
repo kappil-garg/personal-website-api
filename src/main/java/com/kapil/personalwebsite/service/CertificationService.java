@@ -13,7 +13,7 @@ import java.util.List;
 public interface CertificationService {
 
     /**
-     * Retrieves all certifications ordered by display order.
+     * Retrieves all certifications.
      *
      * @return a list of all certifications
      */
