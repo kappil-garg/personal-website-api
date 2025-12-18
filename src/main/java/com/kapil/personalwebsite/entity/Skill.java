@@ -38,7 +38,7 @@ public class Skill {
     private List<String> skills;
 
     @Field("display_order")
-    private Integer displayOrder = 0;
+    private Integer displayOrder;
 
     @CreatedDate
     @Field("created_at")
