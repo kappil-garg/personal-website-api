@@ -52,7 +52,7 @@ public class OriginVerificationFilter implements Filter {
                     allowedOriginsSet.size(), allowNoOriginForSSR);
         } else {
             this.allowedOriginsSet = Collections.emptySet();
-            LOGGER.warn("No allowed origins configured for OriginVerificationFilter. All requests without valid API key will be blocked.");
+            LOGGER.warn("No allowed origins configured for OriginVerificationFilter. All non-API key requests will be blocked.");
         }
     }
 
@@ -125,13 +125,13 @@ public class OriginVerificationFilter implements Filter {
     }
 
     /**
-     * Authorizes other endpoints which allow API key, Origin, Referer, or SSR (if enabled).
+     * Authorize non-blog endpoints based on user authentication, API key, Origin, Referer headers, or SSR allowance.
      *
      * @param request the HTTP servlet request
      * @return true if authorized, false otherwise
      */
     private boolean authorizeOtherEndpoint(HttpServletRequest request) {
-        if (isValidApiKeyProvided(request)) {
+        if (request.getUserPrincipal() != null || isValidApiKeyProvided(request)) {
             return true;
         }
         String origin = request.getHeader(AppConstants.ORIGIN_HEADER);

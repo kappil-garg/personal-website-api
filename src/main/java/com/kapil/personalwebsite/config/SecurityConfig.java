@@ -1,6 +1,8 @@
 package com.kapil.personalwebsite.config;
 
 import com.kapil.personalwebsite.util.AppConstants;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -30,6 +32,8 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @EnableWebSecurity
 public class SecurityConfig {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(SecurityConfig.class);
+
     private final long corsMaxAge;
     private final String adminUsername;
     private final String adminPassword;
@@ -53,18 +57,24 @@ public class SecurityConfig {
     }
 
     /**
-     * Validates that admin credentials are provided when admin endpoints are accessed.
+     * Validates that admin credentials are properly configured.
+     * Since admin endpoints require authentication, both username and password must be provided.
      *
      * @param adminUsername the admin username
      * @param adminPassword the admin password
      */
     private static void validateAdminCredentials(String adminUsername, String adminPassword) {
-        if (adminUsername != null && !adminUsername.trim().isEmpty()) {
-            if (adminPassword == null || adminPassword.trim().isEmpty()) {
-                throw new IllegalStateException(
-                        "Admin password is required when admin username is configured. " +
-                                "Please set the ADMIN_PASSWORD environment variable.");
-            }
+        boolean hasUsername = adminUsername != null && !adminUsername.trim().isEmpty();
+        boolean hasPassword = adminPassword != null && !adminPassword.trim().isEmpty();
+        if (hasUsername && !hasPassword) {
+            throw new IllegalStateException(
+                    "Admin password is required when admin username is configured. " +
+                            "Please set the ADMIN_PASSWORD environment variable.");
+        }
+        if (!hasUsername && hasPassword) {
+            throw new IllegalStateException(
+                    "Admin username is required when admin password is configured. " +
+                            "Please set the ADMIN_USERNAME environment variable.");
         }
     }
 
@@ -90,19 +100,16 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/blogs/published/**").permitAll()
-                        .requestMatchers("/blogs/*/view").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/blogs/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/portfolio").permitAll()
                         .requestMatchers(HttpMethod.GET, "/experiences").permitAll()
                         .requestMatchers(HttpMethod.GET, "/projects").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/contact").permitAll()
                         .requestMatchers(HttpMethod.GET, "/educations").permitAll()
                         .requestMatchers(HttpMethod.GET, "/certifications").permitAll()
                         .requestMatchers(HttpMethod.GET, "/skills").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/contact").permitAll()
                         .requestMatchers("/actuator/health").permitAll()
                         .requestMatchers("/actuator/info").permitAll()
-                        .requestMatchers("/blogs").authenticated()
-                        .requestMatchers("/blogs/**").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/portfolio").authenticated()
                         .anyRequest().authenticated()
                 )
@@ -115,10 +122,11 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         if (corsAllowedOrigins == null || corsAllowedOrigins.trim().isEmpty() || "null".equals(corsAllowedOrigins)) {
-            throw new IllegalStateException(
-                    "cors.allowed-origins must be configured. " +
-                            "Set CORS_ALLOWED_ORIGINS environment variable or configure in application properties."
-            );
+            LOGGER.warn("CORS allowed origins not configured. Browser-based frontend requests will be blocked. " +
+                    "Set CORS_ALLOWED_ORIGINS environment variable to enable CORS for frontend access.");
+            UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+            source.registerCorsConfiguration("/**", configuration);
+            return source;
         }
         String[] origins = corsAllowedOrigins.split(",");
         for (String origin : origins) {
@@ -155,6 +163,8 @@ public class SecurityConfig {
     @Bean
     public UserDetailsService userDetailsService() {
         if (adminUsername == null || adminUsername.trim().isEmpty()) {
+            LOGGER.warn("Admin credentials not configured. Admin endpoints requiring authentication will be inaccessible. " +
+                    "Set ADMIN_USERNAME and ADMIN_PASSWORD environment variables to enable admin access.");
             return new InMemoryUserDetailsManager();
         }
         UserDetails admin = User.builder()
@@ -162,6 +172,7 @@ public class SecurityConfig {
                 .password(passwordEncoder().encode(adminPassword))
                 .roles(AppConstants.ADMIN_ROLE)
                 .build();
+        LOGGER.info("Admin user '{}' configured successfully.", adminUsername);
         return new InMemoryUserDetailsManager(admin);
     }
 

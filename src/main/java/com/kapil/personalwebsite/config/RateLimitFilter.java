@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
@@ -61,6 +62,11 @@ public class RateLimitFilter implements Filter {
                          FilterChain chain) throws IOException, ServletException {
         HttpServletRequest httpRequest = (HttpServletRequest) request;
         HttpServletResponse httpResponse = (HttpServletResponse) response;
+        // Bypass rate limiting for OPTIONS requests
+        if (HttpMethod.OPTIONS.matches(httpRequest.getMethod())) {
+            chain.doFilter(request, response);
+            return;
+        }
         if (isContactEndpoint(httpRequest)) {
             String clientIp = getClientIp(httpRequest);
             String rateLimitKey = buildRateLimitKey(clientIp, AppConstants.ENDPOINT_TYPE_CONTACT);
@@ -116,23 +122,30 @@ public class RateLimitFilter implements Filter {
 
     /**
      * Extracts the client IP address from the request considering proxy headers if configured.
+     * Normalizes the IP address (trim and lowercase) to prevent key duplication issues.
      *
      * @param request the HTTP servlet request
-     * @return the client IP address
+     * @return the normalized client IP address
      */
     private String getClientIp(HttpServletRequest request) {
+        String clientIp;
         if (!trustProxyHeaders) {
-            return request.getRemoteAddr();
+            clientIp = request.getRemoteAddr();
+        } else {
+            String xForwardedFor = request.getHeader("X-Forwarded-For");
+            if (xForwardedFor != null && !xForwardedFor.trim().isEmpty()) {
+                clientIp = xForwardedFor.split(",")[0].trim();
+            } else {
+                String xRealIp = request.getHeader("X-Real-IP");
+                if (xRealIp != null && !xRealIp.trim().isEmpty()) {
+                    clientIp = xRealIp.trim();
+                } else {
+                    clientIp = request.getRemoteAddr();
+                }
+            }
         }
-        String xForwardedFor = request.getHeader("X-Forwarded-For");
-        if (xForwardedFor != null && !xForwardedFor.trim().isEmpty()) {
-            return xForwardedFor.split(",")[0].trim();
-        }
-        String xRealIp = request.getHeader("X-Real-IP");
-        if (xRealIp != null && !xRealIp.trim().isEmpty()) {
-            return xRealIp.trim();
-        }
-        return request.getRemoteAddr();
+        // Normalize IP address to prevent key duplication (trim and lowercase)
+        return clientIp.trim().toLowerCase();
     }
 
     /**
@@ -171,7 +184,7 @@ public class RateLimitFilter implements Filter {
     }
 
     /**
-     * Sends a 429 Too Many Requests response with JSON body.
+     * Sends a 429 Too Many Requests response with JSON body and Retry-After header.
      *
      * @param response   the HTTP servlet response
      * @param windowMins the time window in minutes
@@ -181,19 +194,21 @@ public class RateLimitFilter implements Filter {
         response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
         response.setContentType(AppConstants.APPLICATION_JSON);
         response.setCharacterEncoding(AppConstants.UTF_ENCODING);
+        long retryAfterSeconds = (long) windowMins * 60;
+        response.setHeader("Retry-After", String.valueOf(retryAfterSeconds));
         String jsonResponse = """
                 {
                     "error": "Rate limit exceeded",
                     "message": "Too many requests. Please try again after %d minutes.",
                     "retryAfter": %d
                 }
-                """.formatted(windowMins, ((long) windowMins * 60));
+                """.formatted(windowMins, retryAfterSeconds);
         response.getWriter().write(jsonResponse);
     }
 
     /**
      * Cleans up expired entries from the request cache.
-     * Removes requests older than the defined time windows for both endpoint types.
+     * Removes requests older than the longer of the two time windows (contact or blog) plus a 1-minute buffer.
      */
     public void cleanupExpiredEntries() {
         long currentTime = Instant.now().toEpochMilli();

@@ -54,7 +54,7 @@ public final class AppConstants {
     );
 
     /**
-     * Paths for public read endpoints (blogs).
+     * Blog endpoint paths that bypass origin verification in OriginVerificationFilter.
      */
     public static final Set<String> PUBLIC_BLOG_PATHS = Set.of(
             "/blogs"
