@@ -34,7 +34,7 @@ public class HttpApiEmailService implements EmailService {
 
     public HttpApiEmailService(@Value("${email.http-api.api-key}") String apiKey,
                                @Value("${email.http-api.url}") String apiUrl,
-                               @Value("${email.http-api.provider:brevo}") String provider,
+                               @Value("${email.http-api.provider}") String provider,
                                RestTemplate restTemplate,
                                HttpEmailRequestBuilderFactory requestBuilderFactory) {
         this.apiKey = apiKey;

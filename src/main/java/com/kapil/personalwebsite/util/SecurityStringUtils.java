@@ -1,14 +1,16 @@
 package com.kapil.personalwebsite.util;
 
+import java.security.MessageDigest;
+
 /**
  * Utility class for string manipulation and sanitization operations.
  * Provides methods for sanitizing strings for safe use in various contexts.
  *
  * @author Kapil Garg
  */
-public final class StringUtils {
+public final class SecurityStringUtils {
 
-    private StringUtils() {
+    private SecurityStringUtils() {
         throw new UnsupportedOperationException(AppConstants.UTILITY_CLASS_INSTANTIATION_MSG);
     }
 
@@ -101,6 +103,25 @@ public final class StringUtils {
      */
     public static boolean isNotBlank(String str) {
         return !isBlank(str);
+    }
+
+    /**
+     * Constant-time string comparison to prevent timing attacks for API key validation.
+     *
+     * @param a first string
+     * @param b second string
+     * @return true if strings are equal, false otherwise
+     */
+    public static boolean constantTimeEquals(String a, String b) {
+        if (a == null || b == null) {
+            return false;
+        }
+        if (a.length() != b.length()) {
+            return false;
+        }
+        byte[] aBytes = a.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        byte[] bBytes = b.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        return MessageDigest.isEqual(aBytes, bBytes);
     }
 
 }

@@ -23,9 +23,9 @@ public class RateLimitCleanupService {
 
     /**
      * Cleans up expired entries from the rate limit cache.
-     * Runs every minute to remove old entries.
+     * Runs every 10 minutes to remove old entries and prevent memory leaks.
      */
-    @Scheduled(fixedRate = 60000)
+    @Scheduled(fixedRate = 10 * 60 * 1000)
     public void cleanupExpiredEntries() {
         try {
             rateLimitFilter.cleanupExpiredEntries();

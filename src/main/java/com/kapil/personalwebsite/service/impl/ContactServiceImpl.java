@@ -9,7 +9,7 @@ import com.kapil.personalwebsite.service.PersonalInfoService;
 import com.kapil.personalwebsite.service.email.EmailService;
 import com.kapil.personalwebsite.util.AppConstants;
 import com.kapil.personalwebsite.util.EmailTemplateUtils;
-import com.kapil.personalwebsite.util.StringUtils;
+import com.kapil.personalwebsite.util.SecurityStringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -102,7 +102,7 @@ public class ContactServiceImpl implements ContactService {
      * @return true if the email is configured, false otherwise
      */
     private boolean isConfiguredEmail(String email) {
-        return StringUtils.isNotBlank(email) && !email.equals("null");
+        return SecurityStringUtils.isNotBlank(email) && !"null".equals(email);
     }
 
     /**
@@ -112,10 +112,10 @@ public class ContactServiceImpl implements ContactService {
      * @return the email subject line
      */
     private String buildEmailSubject(ContactRequest contactRequest) {
-        String subjectPrefix = StringUtils.isNotBlank(contactRequest.getSubject())
-                ? StringUtils.sanitizeForEmailHeader(contactRequest.getSubject())
+        String subjectPrefix = SecurityStringUtils.isNotBlank(contactRequest.getSubject())
+                ? SecurityStringUtils.sanitizeForEmailHeader(contactRequest.getSubject())
                 : "Contact Form Submission";
-        String sanitizedName = StringUtils.sanitizeForEmailHeader(contactRequest.getName());
+        String sanitizedName = SecurityStringUtils.sanitizeForEmailHeader(contactRequest.getName());
         return String.format("[Contact Form] %s - %s", subjectPrefix, sanitizedName);
     }
 

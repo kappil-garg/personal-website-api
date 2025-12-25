@@ -21,11 +21,11 @@ public final class EmailTemplateUtils {
      * @return the HTML email body
      */
     public static String buildContactFormEmailBody(ContactRequest contactRequest, String websiteDomain) {
-        String name = StringUtils.escapeAndSanitizeForEmailBody(contactRequest.getName());
-        String email = StringUtils.escapeAndSanitizeForEmailBody(contactRequest.getEmail());
-        String subject = StringUtils.escapeAndSanitizeForEmailBody(contactRequest.getSubject());
-        String message = StringUtils.escapeAndSanitizeForEmailBody(contactRequest.getMessage()).replace("\n", "<br>");
-        String domain = StringUtils.escapeAndSanitizeForEmailBody(websiteDomain);
+        String name = SecurityStringUtils.escapeAndSanitizeForEmailBody(contactRequest.getName());
+        String email = SecurityStringUtils.escapeAndSanitizeForEmailBody(contactRequest.getEmail());
+        String subject = SecurityStringUtils.escapeAndSanitizeForEmailBody(contactRequest.getSubject());
+        String message = SecurityStringUtils.escapeAndSanitizeForEmailBody(contactRequest.getMessage()).replace("\n", "<br>");
+        String domain = SecurityStringUtils.escapeAndSanitizeForEmailBody(websiteDomain);
         return String.format("""
                 <!DOCTYPE html>
                 <html>
@@ -140,13 +140,13 @@ public final class EmailTemplateUtils {
      * @return the subject field HTML or empty string
      */
     private static String buildSubjectField(String subject) {
-        if (StringUtils.isNotBlank(subject)) {
+        if (SecurityStringUtils.isNotBlank(subject)) {
             return String.format("""
                     <div class="field-group">
                         <div class="field-label">Subject</div>
                         <div class="field-value">%s</div>
                     </div>
-                    """, StringUtils.escapeAndSanitizeForEmailBody(subject));
+                    """, SecurityStringUtils.escapeAndSanitizeForEmailBody(subject));
         }
         return "";
     }

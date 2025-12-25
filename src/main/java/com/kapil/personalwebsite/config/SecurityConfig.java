@@ -22,8 +22,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 /**
- * Security configuration for the blog API using Spring Security.
- * Configures Basic Authentication for admin endpoints and allows public access to read-only endpoints.
+ * Security configuration for the application, including CORS settings and admin authentication.
  *
  * @author Kapil Garg
  */
@@ -44,37 +43,33 @@ public class SecurityConfig {
                           @Value("${cors.allowed-origins}") String corsAllowedOrigins,
                           @Value("${cors.allowed-methods}") String corsAllowedMethods,
                           @Value("${cors.allow-credentials}") boolean corsAllowCredentials) {
-        validateAdminCredentials(adminUsername, adminPassword);
         this.corsMaxAge = corsMaxAge;
         this.adminUsername = adminUsername;
         this.adminPassword = adminPassword;
         this.corsAllowedOrigins = corsAllowedOrigins;
         this.corsAllowedMethods = corsAllowedMethods;
         this.corsAllowCredentials = corsAllowCredentials;
+        validateAdminCredentials(adminUsername, adminPassword);
     }
 
     /**
-     * Validates that admin credentials are provided.
+     * Validates that admin credentials are provided when admin endpoints are accessed.
      *
      * @param adminUsername the admin username
      * @param adminPassword the admin password
      */
     private static void validateAdminCredentials(String adminUsername, String adminPassword) {
-        if (adminUsername == null || adminUsername.trim().isEmpty()) {
-            throw new IllegalStateException(
-                    "Admin username is required but not configured. " +
-                            "Please set the ADMIN_USERNAME environment variable.");
-        }
-        if (adminPassword == null || adminPassword.trim().isEmpty()) {
-            throw new IllegalStateException(
-                    "Admin password is required but not configured. " +
-                            "Please set the ADMIN_PASSWORD environment variable.");
+        if (adminUsername != null && !adminUsername.trim().isEmpty()) {
+            if (adminPassword == null || adminPassword.trim().isEmpty()) {
+                throw new IllegalStateException(
+                        "Admin password is required when admin username is configured. " +
+                                "Please set the ADMIN_PASSWORD environment variable.");
+            }
         }
     }
 
     /**
-     * Configures HTTP security with Basic Authentication for admin endpoints.
-     * Public endpoints remain accessible without authentication.
+     * Configures HTTP security with CORS-based origin filtering for all endpoints.
      *
      * @return the security filter chain
      * @throws Exception in case of configuration errors
@@ -105,10 +100,11 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/certifications").permitAll()
                         .requestMatchers(HttpMethod.GET, "/skills").permitAll()
                         .requestMatchers("/actuator/health").permitAll()
+                        .requestMatchers("/actuator/info").permitAll()
                         .requestMatchers("/blogs").authenticated()
                         .requestMatchers("/blogs/**").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/portfolio").authenticated()
-                        .anyRequest().permitAll()
+                        .anyRequest().authenticated()
                 )
                 .httpBasic(httpBasic -> httpBasic.realmName("Blog Admin API"))
                 .userDetailsService(userDetailsService());
@@ -118,11 +114,13 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // If not configured, default to localhost:4200 for development
-        String originsToUse = (corsAllowedOrigins == null || corsAllowedOrigins.trim().isEmpty() || corsAllowedOrigins.equals("null"))
-                ? "http://localhost:4200"
-                : corsAllowedOrigins;
-        String[] origins = originsToUse.split(",");
+        if (corsAllowedOrigins == null || corsAllowedOrigins.trim().isEmpty() || "null".equals(corsAllowedOrigins)) {
+            throw new IllegalStateException(
+                    "cors.allowed-origins must be configured. " +
+                            "Set CORS_ALLOWED_ORIGINS environment variable or configure in application properties."
+            );
+        }
+        String[] origins = corsAllowedOrigins.split(",");
         for (String origin : origins) {
             String trimmedOrigin = origin.trim();
             if (!trimmedOrigin.isEmpty()) {
@@ -156,6 +154,9 @@ public class SecurityConfig {
      */
     @Bean
     public UserDetailsService userDetailsService() {
+        if (adminUsername == null || adminUsername.trim().isEmpty()) {
+            return new InMemoryUserDetailsManager();
+        }
         UserDetails admin = User.builder()
                 .username(adminUsername)
                 .password(passwordEncoder().encode(adminPassword))
