@@ -1,5 +1,7 @@
 package com.kapil.personalwebsite.util;
 
+import java.util.Set;
+
 /**
  * A utility class that holds application-wide constant values.
  * These constants are used throughout the application for various purposes.
@@ -37,6 +39,26 @@ public final class AppConstants {
     public static final String MESSAGE_SENT_SUCCESS = "Message sent successfully! I'll get back to you soon.";
 
     public static final String THANK_YOU_FOR_CONTACTING = "Thank you for contacting me. I will get back to you soon.";
+
+    public static final String ENDPOINT_TYPE_BLOG = "BLOG";
+    public static final String ENDPOINT_TYPE_CONTACT = "CONTACT";
+    public static final String IPV6_LOCALHOST = "0:0:0:0:0:0:0:1";
+
+    /**
+     * Paths that are excluded from origin verification.
+     * These endpoints are either monitored externally or protected by other mechanisms.
+     */
+    public static final Set<String> EXCLUDED_ORIGIN_VERIFICATION_PATHS = Set.of(
+            "/actuator/health",
+            "/actuator/info"
+    );
+
+    /**
+     * Blog endpoint paths that bypass origin verification in OriginVerificationFilter.
+     */
+    public static final Set<String> PUBLIC_BLOG_PATHS = Set.of(
+            "/blogs"
+    );
 
     private AppConstants() {
         throw new UnsupportedOperationException("Utility class cannot be instantiated");

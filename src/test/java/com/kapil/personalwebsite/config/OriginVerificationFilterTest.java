@@ -1,5 +1,6 @@
 package com.kapil.personalwebsite.config;
 
+import com.kapil.personalwebsite.util.SecurityStringUtils;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -18,7 +19,6 @@ import org.springframework.http.MediaType;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.lang.reflect.Method;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -278,55 +278,41 @@ class OriginVerificationFilterTest {
     @DisplayName("Constant time comparison")
     class ConstantTimeEqualsTests {
 
-        private Method constantTimeEqualsMethod;
-
-        @BeforeEach
-        void initMethod() throws Exception {
-            initFilter("https://example.com", "server-secret-key");
-            constantTimeEqualsMethod = OriginVerificationFilter.class
-                    .getDeclaredMethod("constantTimeEquals", String.class, String.class);
-            constantTimeEqualsMethod.setAccessible(true);
-        }
-
-        private boolean invokeConstantTimeEquals(String a, String b) throws Exception {
-            return (boolean) constantTimeEqualsMethod.invoke(filter, a, b);
-        }
-
         @Test
         @DisplayName("Returns true for identical strings")
-        void shouldReturnTrueForIdenticalStrings() throws Exception {
-            assertTrue(invokeConstantTimeEquals("secret", "secret"));
+        void shouldReturnTrueForIdenticalStrings() {
+            assertTrue(SecurityStringUtils.constantTimeEquals("secret", "secret"));
         }
 
         @Test
         @DisplayName("Returns false for different lengths")
-        void shouldReturnFalseForDifferentLengths() throws Exception {
-            assertFalse(invokeConstantTimeEquals("secret", "secret123"));
+        void shouldReturnFalseForDifferentLengths() {
+            assertFalse(SecurityStringUtils.constantTimeEquals("secret", "secret123"));
         }
 
         @Test
         @DisplayName("Returns false when either value is null")
-        void shouldReturnFalseForNulls() throws Exception {
-            assertFalse(invokeConstantTimeEquals(null, "secret"));
-            assertFalse(invokeConstantTimeEquals("secret", null));
+        void shouldReturnFalseForNulls() {
+            assertFalse(SecurityStringUtils.constantTimeEquals(null, "secret"));
+            assertFalse(SecurityStringUtils.constantTimeEquals("secret", null));
         }
 
         @Test
         @DisplayName("Handles empty strings safely")
-        void shouldHandleEmptyStrings() throws Exception {
-            assertTrue(invokeConstantTimeEquals("", ""));
-            assertFalse(invokeConstantTimeEquals("", "a"));
+        void shouldHandleEmptyStrings() {
+            assertTrue(SecurityStringUtils.constantTimeEquals("", ""));
+            assertFalse(SecurityStringUtils.constantTimeEquals("", "a"));
         }
 
         @Test
         @DisplayName("Uses constant-time comparison for same-length inputs")
-        void shouldBehaveInConstantTimeForSameLength() throws Exception {
+        void shouldBehaveInConstantTimeForSameLength() {
             String expected = "server-secret-key";
             String different = "server-secret-kex";
             // Warm up JIT with multiple iterations
             for (int i = 0; i < 10_000; i++) {
-                invokeConstantTimeEquals(expected, expected);
-                invokeConstantTimeEquals(expected, different);
+                SecurityStringUtils.constantTimeEquals(expected, expected);
+                SecurityStringUtils.constantTimeEquals(expected, different);
             }
             // Run multiple measurements and take average for stability
             int iterations = 5;
@@ -347,10 +333,10 @@ class OriginVerificationFilterTest {
                             avgEqual, avgDifferent, max - min, threshold));
         }
 
-        private long measureComparisons(String a, String b) throws Exception {
+        private long measureComparisons(String a, String b) {
             long start = System.nanoTime();
             for (int i = 0; i < 100_000; i++) {
-                invokeConstantTimeEquals(a, b);
+                SecurityStringUtils.constantTimeEquals(a, b);
             }
             return System.nanoTime() - start;
         }

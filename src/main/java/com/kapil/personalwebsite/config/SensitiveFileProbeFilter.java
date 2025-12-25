@@ -1,5 +1,6 @@
 package com.kapil.personalwebsite.config;
 
+import com.kapil.personalwebsite.util.AppConstants;
 import com.kapil.personalwebsite.util.ExceptionUtils;
 import jakarta.servlet.*;
 import jakarta.servlet.http.HttpServletRequest;
@@ -167,7 +168,7 @@ public class SensitiveFileProbeFilter implements Filter {
      */
     private String getClientIp(HttpServletRequest request) {
         String remoteAddr = request.getRemoteAddr();
-        if (remoteAddr != null && !remoteAddr.isEmpty() && !remoteAddr.equals("0:0:0:0:0:0:0:1")) {
+        if (remoteAddr != null && !remoteAddr.isEmpty() && !remoteAddr.equals(AppConstants.IPV6_LOCALHOST)) {
             return remoteAddr;
         }
         return "unknown";
