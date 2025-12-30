@@ -101,6 +101,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/blogs/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/blogs/*/view").permitAll()
                         .requestMatchers(HttpMethod.GET, "/portfolio").permitAll()
                         .requestMatchers(HttpMethod.GET, "/experiences").permitAll()
                         .requestMatchers(HttpMethod.GET, "/projects").permitAll()
