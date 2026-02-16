@@ -1,0 +1,74 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Documentation
+*.md
+README.md
+HOSTING_OPTIONS.md
+RAILWAY_DEPLOYMENT.md
+
+# IDE
+.idea
+.vscode
+*.iml
+*.ipr
+*.iws
+.settings
+.project
+.classpath
+
+# Build outputs (will be built in container)
+build/
+out/
+target/
+dist/
+.gradle/
+
+# Test files
+src/test/
+test/
+*.test.*
+
+# Logs
+*.log
+logs/
+
+# Environment files
+.env
+.env.*
+*.env
+*.env.local
+*.env.*.local
+
+# OS files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*.bak
+
+# Node (if any)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Coverage reports
+coverage/
+.nyc_output/
+test-results/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Railway specific (if any)
+railway.json
+.railway/
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+.dockerignore

@@ -35,21 +35,18 @@ public class OriginVerificationFilter implements Filter {
     private static final Logger LOGGER = LoggerFactory.getLogger(OriginVerificationFilter.class);
 
     private final String serverApiKey;
-    private final boolean allowNoOriginForSSR;
     private final Set<String> allowedOriginsSet;
 
     public OriginVerificationFilter(@Value("${api.server-key}") String serverApiKey,
-                                    @Value("${cors.allowed-origins}") String allowedOrigins,
-                                    @Value("${ssr.allow-no-origin}") boolean allowNoOriginForSSR) {
+                                    @Value("${cors.allowed-origins}") String allowedOrigins) {
         this.serverApiKey = serverApiKey;
-        this.allowNoOriginForSSR = allowNoOriginForSSR;
         if (StringUtils.hasText(allowedOrigins)) {
             this.allowedOriginsSet = Arrays.stream(allowedOrigins.split(","))
                     .map(String::trim)
                     .filter(StringUtils::hasText)
                     .collect(Collectors.toSet());
-            LOGGER.info("OriginVerificationFilter initialized with {} allowed origins, SSR allowed: {}",
-                    allowedOriginsSet.size(), allowNoOriginForSSR);
+            LOGGER.info("OriginVerificationFilter initialized with {} allowed origins",
+                    allowedOriginsSet.size());
         } else {
             this.allowedOriginsSet = Collections.emptySet();
             LOGGER.warn("No allowed origins configured for OriginVerificationFilter. All non-API key requests will be blocked.");
@@ -125,7 +122,7 @@ public class OriginVerificationFilter implements Filter {
     }
 
     /**
-     * Authorize non-blog endpoints based on user authentication, API key, Origin, Referer headers, or SSR allowance.
+     * Authorize non-blog endpoints based on user authentication, API key, Origin, or Referer headers.
      *
      * @param request the HTTP servlet request
      * @return true if authorized, false otherwise
@@ -141,13 +138,7 @@ public class OriginVerificationFilter implements Filter {
         String referer = request.getHeader(AppConstants.REFERER_HEADER);
         if (StringUtils.hasText(referer)) {
             String refererOrigin = extractOriginFromReferer(referer);
-            if (refererOrigin != null && isAllowedOrigin(refererOrigin)) {
-                return true;
-            }
-        }
-        if (allowNoOriginForSSR && isLikelySSRRequest(request)) {
-            LOGGER.debug("Allowing SSR request without Origin header from: {}", request.getRemoteAddr());
-            return true;
+            return refererOrigin != null && isAllowedOrigin(refererOrigin);
         }
         return false;
     }
@@ -175,22 +166,6 @@ public class OriginVerificationFilter implements Filter {
             return false;
         }
         return AppConstants.PUBLIC_BLOG_PATHS.stream().anyMatch(servletPath::startsWith);
-    }
-
-    /**
-     * Determine if the request is likely an SSR/server request based on absence of Origin header.
-     *
-     * @param request the HTTP servlet request
-     * @return true if this appears to be an SSR/server request
-     */
-    private boolean isLikelySSRRequest(HttpServletRequest request) {
-        String origin = request.getHeader(AppConstants.ORIGIN_HEADER);
-        if (!StringUtils.hasText(origin)) {
-            LOGGER.debug("Detected server-to-server request (no Origin header) from: {}",
-                    request.getRemoteAddr());
-            return true;
-        }
-        return false;
     }
 
     /**
