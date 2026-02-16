@@ -49,12 +49,8 @@ class OriginVerificationFilterTest {
         when(response.getWriter()).thenReturn(new PrintWriter(responseWriter));
     }
 
-    private void initFilter(String allowedOrigins, String serverApiKey, boolean allowNoOriginForSSR) {
-        filter = new OriginVerificationFilter(serverApiKey, allowedOrigins, allowNoOriginForSSR);
-    }
-
     private void initFilter(String allowedOrigins, String serverApiKey) {
-        initFilter(allowedOrigins, serverApiKey, true);
+        filter = new OriginVerificationFilter(serverApiKey, allowedOrigins);
     }
 
     @Nested
@@ -82,13 +78,13 @@ class OriginVerificationFilterTest {
     class NonProtectedEndpointTests {
 
         @Test
-        @DisplayName("Should allow requests to non-protected endpoints")
-        void testDoFilter_NonProtectedEndpoint_ShouldAllow() throws Exception {
+        @DisplayName("Should block requests to non-excluded endpoints without authorization")
+        void testDoFilter_NonProtectedEndpoint_ShouldBlock() throws Exception {
             initFilter("https://example.com", "test-key");
             when(request.getRequestURI()).thenReturn("/api/health");
             filter.doFilter(request, response, filterChain);
-            verify(filterChain).doFilter(request, response);
-            verify(response, never()).setStatus(anyInt());
+            verify(filterChain, never()).doFilter(request, response);
+            verify(response).setStatus(HttpStatus.FORBIDDEN.value());
         }
 
         @Test
@@ -154,7 +150,7 @@ class OriginVerificationFilterTest {
         @Test
         @DisplayName("Should block invalid API key when SSR is disabled")
         void testDoFilter_WithInvalidApiKey_SSRDisabled_ShouldBlock() throws Exception {
-            initFilter("https://example.com", "test-secret-key", false);
+            initFilter("https://example.com", "test-secret-key");
             when(request.getRequestURI()).thenReturn("/blogs/published");
             when(request.getMethod()).thenReturn("GET");
             when(request.getHeader("X-API-Key")).thenReturn("wrong-key");
@@ -197,7 +193,7 @@ class OriginVerificationFilterTest {
         @Test
         @DisplayName("Should block invalid referer when SSR is disabled")
         void testDoFilter_WithInvalidReferer_SSRDisabled_ShouldBlock() throws Exception {
-            initFilter("https://example.com", "test-key", false);
+            initFilter("https://example.com", "test-key");
             when(request.getRequestURI()).thenReturn("/blogs/published");
             when(request.getMethod()).thenReturn("GET");
             when(request.getHeader("Referer")).thenReturn("https://malicious.com/hack");
@@ -238,21 +234,21 @@ class OriginVerificationFilterTest {
     class SSRDetectionTests {
 
         @Test
-        @DisplayName("Should allow SSR requests (no Origin) when SSR is enabled")
-        void testDoFilter_NoOrigin_SSREnabled_ShouldAllow() throws Exception {
-            initFilter("https://example.com", "test-key", true);
+        @DisplayName("Should block requests without Origin even when SSR toggle is enabled")
+        void testDoFilter_NoOrigin_SSREnabled_ShouldBlock() throws Exception {
+            initFilter("https://example.com", "test-key");
             when(request.getRequestURI()).thenReturn("/blogs/published");
             when(request.getMethod()).thenReturn("GET");
             when(request.getRemoteAddr()).thenReturn("127.0.0.1");
             filter.doFilter(request, response, filterChain);
-            verify(filterChain).doFilter(request, response);
-            verify(response, never()).setStatus(anyInt());
+            verify(filterChain, never()).doFilter(request, response);
+            verify(response).setStatus(HttpStatus.FORBIDDEN.value());
         }
 
         @Test
         @DisplayName("Should block requests without Origin when SSR is disabled")
         void testDoFilter_NoOrigin_SSRDisabled_ShouldBlock() throws Exception {
-            initFilter("https://example.com", "test-key", false);
+            initFilter("https://example.com", "test-key");
             when(request.getRequestURI()).thenReturn("/blogs/published");
             when(request.getMethod()).thenReturn("GET");
             filter.doFilter(request, response, filterChain);
@@ -263,7 +259,7 @@ class OriginVerificationFilterTest {
         @Test
         @DisplayName("Browser request with invalid Origin should still be blocked even with SSR enabled")
         void testDoFilter_BrowserWithInvalidOrigin_SSREnabled_ShouldBlock() throws Exception {
-            initFilter("https://example.com", "test-key", true);
+            initFilter("https://example.com", "test-key");
             when(request.getRequestURI()).thenReturn("/blogs/published");
             when(request.getMethod()).thenReturn("GET");
             when(request.getHeader("Origin")).thenReturn("https://malicious.com");
