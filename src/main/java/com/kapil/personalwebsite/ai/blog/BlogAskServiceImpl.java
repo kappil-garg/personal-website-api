@@ -44,7 +44,11 @@ public class BlogAskServiceImpl implements BlogAskService {
 
     @Override
     public Optional<BlogAskResponse> ask(String slug, BlogAskRequest request) {
-        Blog blog = getPublishedBlogOrNull(slug);
+        Optional<Blog> blogOpt = blogPublicService.getPublishedBlogBySlug(slug);
+        if (blogOpt.isEmpty()) {
+            return Optional.empty();
+        }
+        Blog blog = blogOpt.get();
         String context = buildContext(blog);
         String question = request.question() != null ? request.question() : "";
         LOGGER.debug("Blog Q&A: slug={}, question length={}", slug, question.length());
@@ -61,7 +65,13 @@ public class BlogAskServiceImpl implements BlogAskService {
 
     @Override
     public Flux<String> askStream(String slug, BlogAskRequest request) {
-        Blog blog = getPublishedBlogOrNull(slug);
+        Optional<Blog> blogOpt = blogPublicService.getPublishedBlogBySlug(slug);
+        if (blogOpt.isEmpty()) {
+            return Flux.error(new IllegalArgumentException(
+                    String.format("Published blog with slug '%s' not found", slug)
+            ));
+        }
+        Blog blog = blogOpt.get();
         String context = buildContext(blog);
         String question = request.question() != null ? request.question() : "";
         LOGGER.debug("Blog Q&A (stream): slug={}, question length={}", slug, question.length());
@@ -70,17 +80,6 @@ public class BlogAskServiceImpl implements BlogAskService {
                 .user(userMessage)
                 .stream()
                 .content();
-    }
-
-    /**
-     * Retrieves the published blog by slug, or returns null if not found.
-     *
-     * @param slug the slug of the blog to retrieve
-     * @return the published Blog if found, or null if not found
-     */
-    private Blog getPublishedBlogOrNull(String slug) {
-        Optional<Blog> blogOpt = blogPublicService.getPublishedBlogBySlug(slug);
-        return blogOpt.orElse(null);
     }
 
     /**

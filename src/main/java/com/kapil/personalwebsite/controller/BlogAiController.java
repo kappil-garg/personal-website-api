@@ -78,7 +78,7 @@ public class BlogAiController {
             return emitter;
         }
         BlogAskRequest request = new BlogAskRequest(question);
-        blogAskService.askStream(slug, request)
+        var subscription = blogAskService.askStream(slug, request)
                 .doOnError(ex -> {
                     try {
                         emitter.send(SseEmitter.event().name("error")
@@ -97,6 +97,9 @@ public class BlogAiController {
                         emitter.completeWithError(e);
                     }
                 });
+        emitter.onCompletion(subscription::dispose);
+        emitter.onTimeout(subscription::dispose);
+        emitter.onError(ex -> subscription.dispose());
         return emitter;
     }
 

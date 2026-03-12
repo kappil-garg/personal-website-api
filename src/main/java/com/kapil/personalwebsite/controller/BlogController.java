@@ -2,6 +2,7 @@ package com.kapil.personalwebsite.controller;
 
 import com.kapil.personalwebsite.dto.ApiResponse;
 import com.kapil.personalwebsite.entity.Blog;
+import com.kapil.personalwebsite.mapper.BlogResponseMapper;
 import com.kapil.personalwebsite.service.blog.BlogAdminService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -51,7 +52,7 @@ public class BlogController {
     public ResponseEntity<ApiResponse<Blog>> getBlogBySlug(@PathVariable String slug) {
         LOGGER.info("GET /blogs/{} - Fetching blog by slug (admin)", slug);
         Optional<Blog> blog = blogAdminService.getBlogBySlug(slug);
-        return PublicBlogController.getApiResponseResponseEntity(slug, blog);
+        return BlogResponseMapper.buildBlogResponse(slug, blog.orElse(null));
     }
 
     /**

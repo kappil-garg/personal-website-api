@@ -3,10 +3,10 @@ package com.kapil.personalwebsite.controller;
 import com.kapil.personalwebsite.dto.ApiResponse;
 import com.kapil.personalwebsite.entity.Blog;
 import com.kapil.personalwebsite.entity.BlogCategory;
+import com.kapil.personalwebsite.mapper.BlogResponseMapper;
 import com.kapil.personalwebsite.service.blog.BlogAnalyticsService;
 import com.kapil.personalwebsite.service.blog.BlogPublicService;
 import lombok.RequiredArgsConstructor;
-import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -31,20 +31,6 @@ public class PublicBlogController {
 
     private final BlogPublicService blogPublicService;
     private final BlogAnalyticsService blogAnalyticsService;
-
-    @NonNull
-    static ResponseEntity<ApiResponse<Blog>> getApiResponseResponseEntity(String slug, Optional<Blog> blog) {
-        if (blog.isPresent()) {
-            ApiResponse<Blog> response = ApiResponse.success(blog.get(),
-                    String.format("Blog with slug '%s' retrieved successfully", slug));
-            return ResponseEntity.ok(response);
-        } else {
-            ApiResponse<Blog> response = ApiResponse.error(
-                    String.format("Blog with slug '%s' not found", slug),
-                    HttpStatus.NOT_FOUND.value());
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
-        }
-    }
 
     /**
      * Retrieves all published blogs (public access).
@@ -84,7 +70,7 @@ public class PublicBlogController {
     public ResponseEntity<ApiResponse<Blog>> getPublishedBlogBySlug(@PathVariable String slug) {
         LOGGER.info("GET /blogs/published/{} - Fetching published blog by slug (public)", slug);
         Optional<Blog> blog = blogPublicService.getPublishedBlogBySlug(slug);
-        return getApiResponseResponseEntity(slug, blog);
+        return BlogResponseMapper.buildBlogResponse(slug, blog.orElse(null));
     }
 
     /**
