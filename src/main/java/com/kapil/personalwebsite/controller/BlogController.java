@@ -1,12 +1,17 @@
 package com.kapil.personalwebsite.controller;
 
+import com.kapil.personalwebsite.ai.blog.BlogAskService;
+import com.kapil.personalwebsite.ai.dto.BlogAskRequest;
+import com.kapil.personalwebsite.ai.dto.BlogAskResponse;
 import com.kapil.personalwebsite.dto.ApiResponse;
 import com.kapil.personalwebsite.entity.Blog;
 import com.kapil.personalwebsite.entity.BlogCategory;
 import com.kapil.personalwebsite.service.blog.BlogAdminService;
 import com.kapil.personalwebsite.service.blog.BlogAnalyticsService;
 import com.kapil.personalwebsite.service.blog.BlogPublicService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -29,6 +34,7 @@ public class BlogController {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(BlogController.class);
 
+    private final BlogAskService blogAskService;
     private final BlogAdminService blogAdminService;
     private final BlogPublicService blogPublicService;
     private final BlogAnalyticsService blogAnalyticsService;
@@ -56,6 +62,18 @@ public class BlogController {
     public ResponseEntity<ApiResponse<Blog>> getBlogBySlug(@PathVariable String slug) {
         LOGGER.info("GET /blogs/{} - Fetching blog by slug (admin)", slug);
         Optional<Blog> blog = blogAdminService.getBlogBySlug(slug);
+        return getApiResponseResponseEntity(slug, blog);
+    }
+
+    /**
+     * Helper method to create a ResponseEntity<ApiResponse<Blog>> based on the presence of the blog.
+     *
+     * @param slug the slug of the blog
+     * @param blog the Optional containing the blog if found
+     * @return a ResponseEntity with ApiResponse containing the blog or an error message
+     */
+    @NonNull
+    private ResponseEntity<ApiResponse<Blog>> getApiResponseResponseEntity(String slug, Optional<Blog> blog) {
         if (blog.isPresent()) {
             ApiResponse<Blog> response = ApiResponse.success(blog.get(),
                     String.format("Blog with slug '%s' retrieved successfully", slug));
@@ -128,16 +146,29 @@ public class BlogController {
     public ResponseEntity<ApiResponse<Blog>> getPublishedBlogBySlug(@PathVariable String slug) {
         LOGGER.info("GET /blogs/published/{} - Fetching published blog by slug (public)", slug);
         Optional<Blog> blog = blogPublicService.getPublishedBlogBySlug(slug);
-        if (blog.isPresent()) {
-            ApiResponse<Blog> response = ApiResponse.success(blog.get(),
-                    String.format("Blog with slug '%s' retrieved successfully", slug));
-            return ResponseEntity.ok(response);
-        } else {
-            ApiResponse<Blog> response = ApiResponse.error(
-                    String.format("Blog with slug '%s' not found", slug),
-                    HttpStatus.NOT_FOUND.value());
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
-        }
+        return getApiResponseResponseEntity(slug, blog);
+    }
+
+    /**
+     * Answers a question about a published blog post using AI (public access, rate limited).
+     *
+     * @param slug    the slug of the published blog
+     * @param request the request containing the question
+     * @return a ResponseEntity containing the answer, or 404 if blog not found
+     */
+    @PostMapping("/published/{slug}/ask")
+    public ResponseEntity<ApiResponse<BlogAskResponse>> askAboutBlog(
+            @PathVariable String slug,
+            @Valid @RequestBody BlogAskRequest request) {
+        LOGGER.info("POST /blogs/published/{}/ask - Blog Q&A requested (public)", slug);
+        return blogAskService.ask(slug, request)
+                .map(responseData -> {
+                    ApiResponse<BlogAskResponse> response = ApiResponse.success(
+                            responseData, "Answer generated successfully");
+                    return ResponseEntity.ok(response);
+                })
+                .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(ApiResponse.error("Blog not found", HttpStatus.NOT_FOUND.value())));
     }
 
     /**

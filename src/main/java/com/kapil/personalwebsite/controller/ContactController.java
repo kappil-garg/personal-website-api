@@ -1,5 +1,8 @@
 package com.kapil.personalwebsite.controller;
 
+import com.kapil.personalwebsite.ai.contact.ContactPolishService;
+import com.kapil.personalwebsite.ai.dto.ContactPolishRequest;
+import com.kapil.personalwebsite.ai.dto.ContactPolishResponse;
 import com.kapil.personalwebsite.dto.ApiResponse;
 import com.kapil.personalwebsite.dto.ContactRequest;
 import com.kapil.personalwebsite.service.ContactService;
@@ -29,6 +32,7 @@ public class ContactController {
     private static final Logger LOGGER = LoggerFactory.getLogger(ContactController.class);
 
     private final ContactService contactService;
+    private final ContactPolishService contactPolishService;
 
     /**
      * Submits a contact form and sends email notification (public access).
@@ -42,6 +46,23 @@ public class ContactController {
         String message = contactService.submitContact(contactRequest);
         Map<String, String> responseData = Map.of("message", message);
         ApiResponse<Map<String, String>> response = ApiResponse.success(responseData, message);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Suggests an improved version of the contact message using AI (public access).
+     * Rate limited to prevent abuse.
+     *
+     * @param polishRequest the request containing the message to polish
+     * @return a ResponseEntity containing the suggested message
+     */
+    @PostMapping("/polish")
+    public ResponseEntity<ApiResponse<ContactPolishResponse>> polishMessage(
+            @Valid @RequestBody ContactPolishRequest polishRequest) {
+        LOGGER.info("POST /contact/polish - Message polish requested");
+        ContactPolishResponse responseData = contactPolishService.polishMessage(polishRequest);
+        ApiResponse<ContactPolishResponse> response = ApiResponse.success(
+                responseData, "Message polished successfully");
         return ResponseEntity.ok(response);
     }
 

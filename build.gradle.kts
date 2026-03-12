@@ -26,6 +26,9 @@ repositories {
 
 dependencies {
 
+    implementation(platform("org.springframework.ai:spring-ai-bom:1.1.2"))
+    implementation("org.springframework.ai:spring-ai-starter-model-google-genai")
+
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("org.springframework.boot:spring-boot-starter-security")
@@ -47,6 +50,23 @@ dependencies {
 
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
+}
+
+configurations.configureEach {
+    resolutionStrategy.eachDependency {
+        when {
+            requested.group == "org.apache.tomcat.embed" ->
+                useVersion("11.0.18")
+            requested.group == "com.google.protobuf" ->
+                useVersion("4.28.2")
+            requested.group == "com.fasterxml.jackson.core" && requested.name == "jackson-core" ->
+                useVersion("2.21.1")
+            requested.group == "ch.qos.logback" ->
+                useVersion("1.5.25")
+            requested.group == "org.assertj" && requested.name == "assertj-core" ->
+                useVersion("3.27.7")
+        }
+    }
 }
 
 tasks.withType<Test> {

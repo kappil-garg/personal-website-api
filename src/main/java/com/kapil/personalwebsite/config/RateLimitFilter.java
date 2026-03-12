@@ -37,19 +37,32 @@ public class RateLimitFilter implements Filter {
     private final int windowMinutes;
     private final int blogMaxRequests;
     private final int blogWindowMinutes;
+    private final int blogAskMaxRequests;
+    private final int blogAskWindowMinutes;
+    private final int contactPolishMaxRequests;
+    private final int contactPolishWindowMinutes;
+
     private final boolean trustProxyHeaders;
 
     private final Map<String, RequestWindow> requestCache = new ConcurrentHashMap<>();
 
     public RateLimitFilter(@Value("${rate.limit.contact.max-requests}") int maxRequests,
                            @Value("${rate.limit.contact.window-minutes}") int windowMinutes,
+                           @Value("${rate.limit.contact-polish.max-requests}") int contactPolishMaxRequests,
+                           @Value("${rate.limit.contact-polish.window-minutes}") int contactPolishWindowMinutes,
                            @Value("${rate.limit.blog.max-requests}") int blogMaxRequests,
                            @Value("${rate.limit.blog.window-minutes}") int blogWindowMinutes,
+                           @Value("${rate.limit.blog-ask.max-requests}") int blogAskMaxRequests,
+                           @Value("${rate.limit.blog-ask.window-minutes}") int blogAskWindowMinutes,
                            @Value("${rate.limit.trust-proxy-headers:false}") boolean trustProxyHeaders) {
         this.maxRequests = maxRequests;
         this.windowMinutes = windowMinutes;
+        this.contactPolishMaxRequests = contactPolishMaxRequests;
+        this.contactPolishWindowMinutes = contactPolishWindowMinutes;
         this.blogMaxRequests = blogMaxRequests;
         this.blogWindowMinutes = blogWindowMinutes;
+        this.blogAskMaxRequests = blogAskMaxRequests;
+        this.blogAskWindowMinutes = blogAskWindowMinutes;
         this.trustProxyHeaders = trustProxyHeaders;
         if (trustProxyHeaders) {
             LOGGER.warn("Proxy header trust is enabled. Ensure your proxy/load balancer strips " +
@@ -67,12 +80,28 @@ public class RateLimitFilter implements Filter {
             chain.doFilter(request, response);
             return;
         }
-        if (isContactEndpoint(httpRequest)) {
+        if (isContactPolishEndpoint(httpRequest)) {
+            String clientIp = getClientIp(httpRequest);
+            String rateLimitKey = buildRateLimitKey(clientIp, AppConstants.ENDPOINT_TYPE_CONTACT_POLISH);
+            if (isRateLimitExceeded(rateLimitKey, contactPolishMaxRequests, contactPolishWindowMinutes)) {
+                LOGGER.warn("Rate limit exceeded for contact polish endpoint - IP: {} - Path: {}", clientIp, httpRequest.getRequestURI());
+                sendRateLimitExceededResponse(httpResponse, contactPolishWindowMinutes);
+                return;
+            }
+        } else if (isContactEndpoint(httpRequest)) {
             String clientIp = getClientIp(httpRequest);
             String rateLimitKey = buildRateLimitKey(clientIp, AppConstants.ENDPOINT_TYPE_CONTACT);
             if (isRateLimitExceeded(rateLimitKey, maxRequests, windowMinutes)) {
                 LOGGER.warn("Rate limit exceeded for contact endpoint - IP: {} - Path: {}", clientIp, httpRequest.getRequestURI());
                 sendRateLimitExceededResponse(httpResponse, windowMinutes);
+                return;
+            }
+        } else if (isBlogAskEndpoint(httpRequest)) {
+            String clientIp = getClientIp(httpRequest);
+            String rateLimitKey = buildRateLimitKey(clientIp, AppConstants.ENDPOINT_TYPE_BLOG_ASK);
+            if (isRateLimitExceeded(rateLimitKey, blogAskMaxRequests, blogAskWindowMinutes)) {
+                LOGGER.warn("Rate limit exceeded for blog ask endpoint - IP: {} - Path: {}", clientIp, httpRequest.getRequestURI());
+                sendRateLimitExceededResponse(httpResponse, blogAskWindowMinutes);
                 return;
             }
         } else if (isBlogEndpoint(httpRequest)) {
@@ -92,6 +121,21 @@ public class RateLimitFilter implements Filter {
     }
 
     /**
+     * Checks if the request is for the contact polish endpoint with POST method.
+     *
+     * @param request the HTTP servlet request
+     * @return true if it's a POST request to /contact/polish, false otherwise
+     */
+    private boolean isContactPolishEndpoint(HttpServletRequest request) {
+        if (!AppConstants.POST_METHOD.equalsIgnoreCase(request.getMethod())) {
+            return false;
+        }
+        String servletPath = request.getServletPath();
+        return servletPath != null &&
+                (servletPath.equals(AppConstants.CONTACT_POLISH_PATH) || servletPath.equals(AppConstants.CONTACT_POLISH_PATH + "/"));
+    }
+
+    /**
      * Checks if the request is for the contact endpoint with POST method.
      *
      * @param request the HTTP servlet request
@@ -104,6 +148,20 @@ public class RateLimitFilter implements Filter {
         String servletPath = request.getServletPath();
         return servletPath != null &&
                 (servletPath.equals(AppConstants.CONTACT_PATH) || servletPath.equals(AppConstants.CONTACT_PATH + "/"));
+    }
+
+    /**
+     * Checks if the request is for the blog ask endpoint (POST /blogs/published/.../ask).
+     *
+     * @param request the HTTP servlet request
+     * @return true if it's a POST request to /blogs/published/{slug}/ask, false otherwise
+     */
+    private boolean isBlogAskEndpoint(HttpServletRequest request) {
+        if (!AppConstants.POST_METHOD.equalsIgnoreCase(request.getMethod())) {
+            return false;
+        }
+        String servletPath = request.getServletPath();
+        return servletPath != null && servletPath.startsWith("/blogs/published/") && servletPath.endsWith("/ask");
     }
 
     /**
@@ -212,7 +270,9 @@ public class RateLimitFilter implements Filter {
      */
     public void cleanupExpiredEntries() {
         long currentTime = Instant.now().toEpochMilli();
-        long windowStart = currentTime - (((long) Math.max(windowMinutes, blogWindowMinutes) + 1) * 60 * 1000L);
+        long maxWindow = Math.max(Math.max(windowMinutes, contactPolishWindowMinutes),
+                Math.max(blogWindowMinutes, blogAskWindowMinutes));
+        long windowStart = currentTime - ((maxWindow + 1) * 60 * 1000L);
         int beforeSize = requestCache.size();
         requestCache.entrySet().removeIf(entry -> {
             RequestWindow window = entry.getValue();
