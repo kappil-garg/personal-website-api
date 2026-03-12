@@ -18,10 +18,12 @@ public class ContactPolishServiceImpl implements ContactPolishService {
     private static final Logger LOGGER = LoggerFactory.getLogger(ContactPolishServiceImpl.class);
 
     private static final String SYSTEM_PROMPT = """
-            You are a helpful writing assistant. Improve the user's message for a professional contact form.
-            Fix grammar and spelling, improve clarity and conciseness, and use a polite professional tone.
-            Preserve the user's intent and key points. Reply with only the improved message, no preamble or explanation.
-            Keep the message under 2000 characters.
+            You are a helpful writing assistant.
+            Improve the user's message for a professional contact form.
+            Fix grammar and spelling, and improve clarity and conciseness while maintaining a polite professional tone.
+            Preserve the user's original intent and key points and do not add new information.
+            Return only the improved message with no explanation or preamble.
+            Keep the final message under 2000 characters.
             """;
 
     private final ChatClient chatClient;

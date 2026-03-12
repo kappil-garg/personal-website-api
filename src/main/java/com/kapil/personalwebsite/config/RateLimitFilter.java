@@ -157,11 +157,19 @@ public class RateLimitFilter implements Filter {
      * @return true if it's a POST request to /blogs/published/{slug}/ask, false otherwise
      */
     private boolean isBlogAskEndpoint(HttpServletRequest request) {
-        if (!AppConstants.POST_METHOD.equalsIgnoreCase(request.getMethod())) {
+        String method = request.getMethod();
+        if (!AppConstants.POST_METHOD.equalsIgnoreCase(method)
+                && !HttpMethod.GET.matches(method)) {
             return false;
         }
         String servletPath = request.getServletPath();
-        return servletPath != null && servletPath.startsWith("/blogs/published/") && servletPath.endsWith("/ask");
+        if (servletPath == null) {
+            return false;
+        }
+        if (!servletPath.startsWith("/blogs/published/")) {
+            return false;
+        }
+        return servletPath.endsWith("/ask") || servletPath.endsWith("/ask/stream");
     }
 
     /**

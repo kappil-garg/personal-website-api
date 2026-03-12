@@ -1,17 +1,9 @@
 package com.kapil.personalwebsite.controller;
 
-import com.kapil.personalwebsite.ai.blog.BlogAskService;
-import com.kapil.personalwebsite.ai.dto.BlogAskRequest;
-import com.kapil.personalwebsite.ai.dto.BlogAskResponse;
 import com.kapil.personalwebsite.dto.ApiResponse;
 import com.kapil.personalwebsite.entity.Blog;
-import com.kapil.personalwebsite.entity.BlogCategory;
 import com.kapil.personalwebsite.service.blog.BlogAdminService;
-import com.kapil.personalwebsite.service.blog.BlogAnalyticsService;
-import com.kapil.personalwebsite.service.blog.BlogPublicService;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -22,8 +14,8 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * REST controller for managing Blog entities.
- * Provides endpoints for public blog access, admin management, and analytics.
+ * REST controller for admin blog management endpoints.
+ * Handles CRUD, publish/unpublish, and admin-only retrieval operations.
  *
  * @author Kapil Garg
  */
@@ -34,10 +26,7 @@ public class BlogController {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(BlogController.class);
 
-    private final BlogAskService blogAskService;
     private final BlogAdminService blogAdminService;
-    private final BlogPublicService blogPublicService;
-    private final BlogAnalyticsService blogAnalyticsService;
 
     /**
      * Retrieves all blogs (admin only).
@@ -62,28 +51,7 @@ public class BlogController {
     public ResponseEntity<ApiResponse<Blog>> getBlogBySlug(@PathVariable String slug) {
         LOGGER.info("GET /blogs/{} - Fetching blog by slug (admin)", slug);
         Optional<Blog> blog = blogAdminService.getBlogBySlug(slug);
-        return getApiResponseResponseEntity(slug, blog);
-    }
-
-    /**
-     * Helper method to create a ResponseEntity<ApiResponse<Blog>> based on the presence of the blog.
-     *
-     * @param slug the slug of the blog
-     * @param blog the Optional containing the blog if found
-     * @return a ResponseEntity with ApiResponse containing the blog or an error message
-     */
-    @NonNull
-    private ResponseEntity<ApiResponse<Blog>> getApiResponseResponseEntity(String slug, Optional<Blog> blog) {
-        if (blog.isPresent()) {
-            ApiResponse<Blog> response = ApiResponse.success(blog.get(),
-                    String.format("Blog with slug '%s' retrieved successfully", slug));
-            return ResponseEntity.ok(response);
-        } else {
-            ApiResponse<Blog> response = ApiResponse.error(
-                    String.format("Blog with slug '%s' not found", slug),
-                    HttpStatus.NOT_FOUND.value());
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
-        }
+        return PublicBlogController.getApiResponseResponseEntity(slug, blog);
     }
 
     /**
@@ -99,91 +67,6 @@ public class BlogController {
         if (blog.isPresent()) {
             ApiResponse<Blog> response = ApiResponse.success(blog.get(),
                     String.format("Blog with ID '%s' retrieved successfully", id));
-            return ResponseEntity.ok(response);
-        } else {
-            ApiResponse<Blog> response = ApiResponse.error(
-                    String.format("Blog with ID '%s' not found", id),
-                    HttpStatus.NOT_FOUND.value());
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
-        }
-    }
-
-    /**
-     * Retrieves all published blogs (public access).
-     *
-     * @return a ResponseEntity containing the list of published blogs
-     */
-    @GetMapping("/published")
-    public ResponseEntity<ApiResponse<List<Blog>>> getPublishedBlogs() {
-        LOGGER.info("GET /blogs/published - Fetching all published blogs (public)");
-        List<Blog> blogs = blogPublicService.getPublishedBlogs();
-        ApiResponse<List<Blog>> response = ApiResponse.success(blogs, "Published blogs retrieved successfully");
-        return ResponseEntity.ok(response);
-    }
-
-    /**
-     * Retrieves published blogs by category (public access).
-     *
-     * @param category the blog category
-     * @return a ResponseEntity containing the list of published blogs in the category
-     */
-    @GetMapping("/published/category/{category}")
-    public ResponseEntity<ApiResponse<List<Blog>>> getPublishedBlogsByCategory(@PathVariable BlogCategory category) {
-        LOGGER.info("GET /blogs/published/category/{} - Fetching published blogs by category (public)", category);
-        List<Blog> blogs = blogPublicService.getPublishedBlogsByCategory(category);
-        ApiResponse<List<Blog>> response = ApiResponse.success(blogs,
-                String.format("Published blogs in category '%s' retrieved successfully", category));
-        return ResponseEntity.ok(response);
-    }
-
-    /**
-     * Retrieves a published blog by its slug (public access).
-     *
-     * @param slug the slug of the blog
-     * @return a ResponseEntity containing the published blog if found, or a 404 status if not found
-     */
-    @GetMapping("/published/{slug}")
-    public ResponseEntity<ApiResponse<Blog>> getPublishedBlogBySlug(@PathVariable String slug) {
-        LOGGER.info("GET /blogs/published/{} - Fetching published blog by slug (public)", slug);
-        Optional<Blog> blog = blogPublicService.getPublishedBlogBySlug(slug);
-        return getApiResponseResponseEntity(slug, blog);
-    }
-
-    /**
-     * Answers a question about a published blog post using AI (public access, rate limited).
-     *
-     * @param slug    the slug of the published blog
-     * @param request the request containing the question
-     * @return a ResponseEntity containing the answer, or 404 if blog not found
-     */
-    @PostMapping("/published/{slug}/ask")
-    public ResponseEntity<ApiResponse<BlogAskResponse>> askAboutBlog(
-            @PathVariable String slug,
-            @Valid @RequestBody BlogAskRequest request) {
-        LOGGER.info("POST /blogs/published/{}/ask - Blog Q&A requested (public)", slug);
-        return blogAskService.ask(slug, request)
-                .map(responseData -> {
-                    ApiResponse<BlogAskResponse> response = ApiResponse.success(
-                            responseData, "Answer generated successfully");
-                    return ResponseEntity.ok(response);
-                })
-                .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(ApiResponse.error("Blog not found", HttpStatus.NOT_FOUND.value())));
-    }
-
-    /**
-     * Increments the view count of a blog (public access).
-     *
-     * @param id the ID of the blog
-     * @return a ResponseEntity containing the blog with updated view count if found, or a 404 status if not found
-     */
-    @PostMapping("/{id}/view")
-    public ResponseEntity<ApiResponse<Blog>> incrementViewCount(@PathVariable String id) {
-        LOGGER.info("POST /blogs/{}/view - Incrementing view count (public)", id);
-        Optional<Blog> blog = blogAnalyticsService.incrementViewCount(id);
-        if (blog.isPresent()) {
-            ApiResponse<Blog> response = ApiResponse.success(blog.get(),
-                    "View count incremented successfully");
             return ResponseEntity.ok(response);
         } else {
             ApiResponse<Blog> response = ApiResponse.error(

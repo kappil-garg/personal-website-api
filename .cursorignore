@@ -1,0 +1,12 @@
+# secrets
+.env
+.env.*
+*.env
+*local.properties*
+
+# dependencies
+node_modules/
+
+# builds
+dist/
+build/
