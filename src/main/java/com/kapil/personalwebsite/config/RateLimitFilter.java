@@ -104,6 +104,14 @@ public class RateLimitFilter implements Filter {
                 sendRateLimitExceededResponse(httpResponse, blogAskWindowMinutes);
                 return;
             }
+        } else if (isPortfolioChatEndpoint(httpRequest)) {
+            String clientIp = getClientIp(httpRequest);
+            String rateLimitKey = buildRateLimitKey(clientIp, AppConstants.ENDPOINT_TYPE_BLOG_ASK);
+            if (isRateLimitExceeded(rateLimitKey, blogAskMaxRequests, blogAskWindowMinutes)) {
+                LOGGER.warn("Rate limit exceeded for portfolio chat endpoint - IP: {} - Path: {}", clientIp, httpRequest.getRequestURI());
+                sendRateLimitExceededResponse(httpResponse, blogAskWindowMinutes);
+                return;
+            }
         } else if (isBlogEndpoint(httpRequest)) {
             String clientIp = getClientIp(httpRequest);
             String rateLimitKey = buildRateLimitKey(clientIp, AppConstants.ENDPOINT_TYPE_BLOG);
@@ -184,6 +192,23 @@ public class RateLimitFilter implements Filter {
             return false;
         }
         return AppConstants.PUBLIC_BLOG_PATHS.stream().anyMatch(servletPath::startsWith);
+    }
+
+    /**
+     * Checks if the request is for the portfolio chat endpoint with POST method.
+     *
+     * @param request the HTTP servlet request
+     * @return true if it's a POST request to /ai/chat, false otherwise
+     */
+    private boolean isPortfolioChatEndpoint(HttpServletRequest request) {
+        if (!AppConstants.POST_METHOD.equalsIgnoreCase(request.getMethod())) {
+            return false;
+        }
+        String servletPath = request.getServletPath();
+        if (servletPath == null) {
+            return false;
+        }
+        return servletPath.equals("/ai/chat") || servletPath.equals("/ai/chat/");
     }
 
     /**

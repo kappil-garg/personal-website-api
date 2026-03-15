@@ -34,23 +34,56 @@ public class OriginVerificationFilter implements Filter {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OriginVerificationFilter.class);
 
+    private static final String X_FORWARDED_FOR = "X-Forwarded-For";
+
     private final String serverApiKey;
     private final Set<String> allowedOriginsSet;
+    private final boolean allowLoopbackNoOrigin;
 
     public OriginVerificationFilter(@Value("${api.server-key}") String serverApiKey,
-                                    @Value("${cors.allowed-origins}") String allowedOrigins) {
-        this.serverApiKey = serverApiKey;
-        if (StringUtils.hasText(allowedOrigins)) {
-            this.allowedOriginsSet = Arrays.stream(allowedOrigins.split(","))
-                    .map(String::trim)
-                    .filter(StringUtils::hasText)
-                    .collect(Collectors.toSet());
-            LOGGER.info("OriginVerificationFilter initialized with {} allowed origins",
-                    allowedOriginsSet.size());
+                                    @Value("${cors.allowed-origins}") String allowedOrigins,
+                                    @Value("${cors.allow-loopback-no-origin:true}") boolean allowLoopbackNoOrigin) {
+        this.allowedOriginsSet = StringUtils.hasText(allowedOrigins)
+                ? Arrays.stream(allowedOrigins.split(",")).map(String::trim).filter(StringUtils::hasText).collect(Collectors.toSet())
+                : Collections.emptySet();
+        if (!this.allowedOriginsSet.isEmpty()) {
+            LOGGER.info("OriginVerificationFilter initialized with {} allowed origins", this.allowedOriginsSet.size());
         } else {
-            this.allowedOriginsSet = Collections.emptySet();
             LOGGER.warn("No allowed origins configured for OriginVerificationFilter. All non-API key requests will be blocked.");
         }
+        this.serverApiKey = serverApiKey;
+        this.allowLoopbackNoOrigin = allowLoopbackNoOrigin;
+    }
+
+    /**
+     * Client IP for loopback check: when the direct connection is from loopback and X-Forwarded-For is present,
+     * use the leftmost (original client) IP so we do not allow every no-origin request when the API is behind a proxy on the same host.
+     */
+    private static String getEffectiveClientAddr(HttpServletRequest request) {
+        String direct = request.getRemoteAddr();
+        if (direct == null) {
+            return null;
+        }
+        String forwarded = request.getHeader(X_FORWARDED_FOR);
+        if (StringUtils.hasText(forwarded) && isLoopback(direct)) {
+            String first = forwarded.split(",")[0].trim();
+            return first.isEmpty() ? direct : first;
+        }
+        return direct;
+    }
+
+    /**
+     * Check if the given address is a loopback address (IPv4 or IPv6).
+     *
+     * @param addr the IP address to check
+     * @return true if the address is a loopback address, false otherwise
+     */
+    private static boolean isLoopback(String addr) {
+        if (addr == null) {
+            return false;
+        }
+        String normalized = addr.trim();
+        return "127.0.0.1".equals(normalized) || "0:0:0:0:0:0:0:1".equals(normalized) || "::1".equals(normalized);
     }
 
     @Override
@@ -138,9 +171,13 @@ public class OriginVerificationFilter implements Filter {
         String referer = request.getHeader(AppConstants.REFERER_HEADER);
         if (StringUtils.hasText(referer)) {
             String refererOrigin = extractOriginFromReferer(referer);
-            return refererOrigin != null && isAllowedOrigin(refererOrigin);
+            if (refererOrigin != null && isAllowedOrigin(refererOrigin)) {
+                return true;
+            }
         }
-        return false;
+        // Allow requests with no Origin/Referer from loopback only (SSR, server-side fetch)
+        return allowLoopbackNoOrigin && !StringUtils.hasText(origin) && !StringUtils.hasText(referer)
+                && isLoopback(getEffectiveClientAddr(request));
     }
 
     /**

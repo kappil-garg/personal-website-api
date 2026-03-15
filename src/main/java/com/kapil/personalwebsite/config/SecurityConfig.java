@@ -103,6 +103,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/blogs/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/blogs/*/view").permitAll()
                         .requestMatchers(HttpMethod.POST, "/blogs/published/*/ask").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/ai/chat").permitAll()
                         .requestMatchers(HttpMethod.GET, "/portfolio").permitAll()
                         .requestMatchers(HttpMethod.GET, "/experiences").permitAll()
                         .requestMatchers(HttpMethod.GET, "/projects").permitAll()
@@ -175,7 +176,7 @@ public class SecurityConfig {
                 .password(passwordEncoder().encode(adminPassword))
                 .roles(AppConstants.ADMIN_ROLE)
                 .build();
-        LOGGER.info("Admin user '{}' configured successfully.", adminUsername);
+        LOGGER.info("Admin user configured successfully.");
         return new InMemoryUserDetailsManager(admin);
     }
 

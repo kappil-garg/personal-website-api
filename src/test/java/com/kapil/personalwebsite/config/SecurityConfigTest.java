@@ -2,7 +2,9 @@ package com.kapil.personalwebsite.config;
 
 import com.kapil.personalwebsite.ai.blog.BlogAskService;
 import com.kapil.personalwebsite.ai.contact.ContactPolishService;
+import com.kapil.personalwebsite.ai.portfolio.PortfolioChatService;
 import org.junit.jupiter.api.Test;
+import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -26,6 +28,12 @@ class SecurityConfigTest {
 
     @MockitoBean
     private ContactPolishService contactPolishService;
+
+    @MockitoBean
+    private PortfolioChatService portfolioChatService;
+
+    @MockitoBean
+    private EmbeddingModel embeddingModel;
 
     @Autowired
     private SecurityConfig securityConfig;
