@@ -44,6 +44,7 @@ public final class AppConstants {
     public static final String ENDPOINT_TYPE_CONTACT = "CONTACT";
     public static final String ENDPOINT_TYPE_BLOG_ASK = "BLOG_ASK";
     public static final String ENDPOINT_TYPE_CONTACT_POLISH = "CONTACT_POLISH";
+    public static final String ENDPOINT_TYPE_PORTFOLIO_CHAT = "PORTFOLIO_CHAT";
 
     public static final String IPV6_LOCALHOST = "0:0:0:0:0:0:0:1";
     public static final String CONTACT_POLISH_PATH = "/contact/polish";

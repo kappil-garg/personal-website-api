@@ -50,7 +50,11 @@ class OriginVerificationFilterTest {
     }
 
     private void initFilter(String allowedOrigins, String serverApiKey) {
-        filter = new OriginVerificationFilter(serverApiKey, allowedOrigins);
+        initFilter(allowedOrigins, serverApiKey, true);
+    }
+
+    private void initFilter(String allowedOrigins, String serverApiKey, boolean allowLoopbackNoOrigin) {
+        filter = new OriginVerificationFilter(serverApiKey, allowedOrigins, allowLoopbackNoOrigin);
     }
 
     @Nested
@@ -234,10 +238,10 @@ class OriginVerificationFilterTest {
     class MissingOriginHeaderTests {
 
         @Test
-        @DisplayName("Should block requests without Origin header")
+        @DisplayName("Should block requests without Origin header when not from loopback")
         void testDoFilter_NoOriginHeader_ShouldBlock() throws Exception {
             initFilter("https://example.com", "test-key");
-            when(request.getRequestURI()).thenReturn("/blogs/published");
+            when(request.getRequestURI()).thenReturn("/api/portfolio");
             when(request.getMethod()).thenReturn("GET");
             filter.doFilter(request, response, filterChain);
             verify(filterChain, never()).doFilter(request, response);
@@ -251,6 +255,86 @@ class OriginVerificationFilterTest {
             when(request.getRequestURI()).thenReturn("/blogs/published");
             when(request.getMethod()).thenReturn("GET");
             when(request.getHeader("Origin")).thenReturn("https://malicious.com");
+            filter.doFilter(request, response, filterChain);
+            verify(filterChain, never()).doFilter(request, response);
+            verify(response).setStatus(HttpStatus.FORBIDDEN.value());
+        }
+
+    }
+
+    @Nested
+    @DisplayName("Loopback no-origin tests")
+    class LoopbackNoOriginTests {
+
+        @Test
+        @DisplayName("Should allow request with no Origin/Referer when from loopback and allowLoopbackNoOrigin is true")
+        void testDoFilter_LoopbackNoOrigin_AllowLoopbackTrue_ShouldAllow() throws Exception {
+            initFilter("https://example.com", "test-key", true);
+            when(request.getRequestURI()).thenReturn("/api/portfolio");
+            when(request.getMethod()).thenReturn("GET");
+            when(request.getRemoteAddr()).thenReturn("127.0.0.1");
+            filter.doFilter(request, response, filterChain);
+            verify(filterChain).doFilter(request, response);
+            verify(response, never()).setStatus(anyInt());
+        }
+
+        @Test
+        @DisplayName("Should allow request with no Origin/Referer when from IPv6 loopback")
+        void testDoFilter_IPv6LoopbackNoOrigin_ShouldAllow() throws Exception {
+            initFilter("https://example.com", "test-key", true);
+            when(request.getRequestURI()).thenReturn("/api/portfolio");
+            when(request.getMethod()).thenReturn("GET");
+            when(request.getRemoteAddr()).thenReturn("::1");
+            filter.doFilter(request, response, filterChain);
+            verify(filterChain).doFilter(request, response);
+            verify(response, never()).setStatus(anyInt());
+        }
+
+        @Test
+        @DisplayName("Should block request with no Origin/Referer when from loopback and allowLoopbackNoOrigin is false")
+        void testDoFilter_LoopbackNoOrigin_AllowLoopbackFalse_ShouldBlock() throws Exception {
+            initFilter("https://example.com", "test-key", false);
+            when(request.getRequestURI()).thenReturn("/api/portfolio");
+            when(request.getMethod()).thenReturn("GET");
+            when(request.getRemoteAddr()).thenReturn("127.0.0.1");
+            filter.doFilter(request, response, filterChain);
+            verify(filterChain, never()).doFilter(request, response);
+            verify(response).setStatus(HttpStatus.FORBIDDEN.value());
+        }
+
+        @Test
+        @DisplayName("Should block when direct is loopback but X-Forwarded-For has non-loopback client (behind proxy)")
+        void testDoFilter_ProxyLoopback_XForwardedForNonLoopback_ShouldBlock() throws Exception {
+            initFilter("https://example.com", "test-key", true);
+            when(request.getRequestURI()).thenReturn("/api/portfolio");
+            when(request.getMethod()).thenReturn("GET");
+            when(request.getRemoteAddr()).thenReturn("127.0.0.1");
+            when(request.getHeader("X-Forwarded-For")).thenReturn("203.0.113.50");
+            filter.doFilter(request, response, filterChain);
+            verify(filterChain, never()).doFilter(request, response);
+            verify(response).setStatus(HttpStatus.FORBIDDEN.value());
+        }
+
+        @Test
+        @DisplayName("Should allow when direct is loopback and X-Forwarded-For has loopback client (SSR behind proxy)")
+        void testDoFilter_ProxyLoopback_XForwardedForLoopback_ShouldAllow() throws Exception {
+            initFilter("https://example.com", "test-key", true);
+            when(request.getRequestURI()).thenReturn("/api/portfolio");
+            when(request.getMethod()).thenReturn("GET");
+            when(request.getRemoteAddr()).thenReturn("127.0.0.1");
+            when(request.getHeader("X-Forwarded-For")).thenReturn("127.0.0.1");
+            filter.doFilter(request, response, filterChain);
+            verify(filterChain).doFilter(request, response);
+            verify(response, never()).setStatus(anyInt());
+        }
+
+        @Test
+        @DisplayName("Should block request with no Origin when from non-loopback remote address")
+        void testDoFilter_NonLoopbackNoOrigin_ShouldBlock() throws Exception {
+            initFilter("https://example.com", "test-key", true);
+            when(request.getRequestURI()).thenReturn("/api/portfolio");
+            when(request.getMethod()).thenReturn("GET");
+            when(request.getRemoteAddr()).thenReturn("192.168.1.100");
             filter.doFilter(request, response, filterChain);
             verify(filterChain, never()).doFilter(request, response);
             verify(response).setStatus(HttpStatus.FORBIDDEN.value());
@@ -324,6 +408,7 @@ class OriginVerificationFilterTest {
             }
             return System.nanoTime() - start;
         }
+
     }
 
 }
