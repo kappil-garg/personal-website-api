@@ -17,6 +17,8 @@ import org.springframework.stereotype.Service;
 @Service
 public class PortfolioChatServiceImpl implements PortfolioChatService {
 
+    private static final int MAX_RELEVANT_ITEMS_SECTION_LENGTH = 2_500;
+
     private final PortfolioRagService portfolioRagService;
     private final PortfolioEmbeddingRetrievalService embeddingRetrievalService;
     private final ChatClient chatClient;
@@ -40,8 +42,19 @@ public class PortfolioChatServiceImpl implements PortfolioChatService {
             var relevantDocuments = embeddingRetrievalService.findRelevantDocuments(message, 5);
             if (!relevantDocuments.isEmpty()) {
                 contextBuilder.append(PortfolioAiConstants.CHAT_RELEVANT_ITEMS_HEADER);
+                int used = 0;
                 for (Document doc : relevantDocuments) {
-                    contextBuilder.append("- ").append(doc.getFormattedContent()).append("\n");
+                    String line = "- " + doc.getFormattedContent() + "\n";
+                    if (used + line.length() > MAX_RELEVANT_ITEMS_SECTION_LENGTH) {
+                        int remaining = MAX_RELEVANT_ITEMS_SECTION_LENGTH - used;
+                        if (remaining <= 0) {
+                            break;
+                        }
+                        contextBuilder.append(line, 0, remaining);
+                        break;
+                    }
+                    contextBuilder.append(line);
+                    used += line.length();
                 }
             }
         }

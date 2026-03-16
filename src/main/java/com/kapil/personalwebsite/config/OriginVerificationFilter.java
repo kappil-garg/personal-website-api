@@ -42,7 +42,7 @@ public class OriginVerificationFilter implements Filter {
 
     public OriginVerificationFilter(@Value("${api.server-key}") String serverApiKey,
                                     @Value("${cors.allowed-origins}") String allowedOrigins,
-                                    @Value("${cors.allow-loopback-no-origin:true}") boolean allowLoopbackNoOrigin) {
+                                    @Value("${cors.allow-loopback-no-origin:false}") boolean allowLoopbackNoOrigin) {
         this.allowedOriginsSet = StringUtils.hasText(allowedOrigins)
                 ? Arrays.stream(allowedOrigins.split(",")).map(String::trim).filter(StringUtils::hasText).collect(Collectors.toSet())
                 : Collections.emptySet();

@@ -14,6 +14,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
@@ -29,7 +30,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ExtendWith(MockitoExtension.class)
 class AiChatControllerTest {
 
-    private final ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
+    private final ObjectMapper OBJECT_MAPPER = new ObjectMapper().findAndRegisterModules();
+
     private MockMvc mockMvc;
     @Mock
     private PortfolioChatService portfolioChatService;
@@ -39,7 +41,11 @@ class AiChatControllerTest {
 
     @BeforeEach
     void setUp() {
-        mockMvc = MockMvcBuilders.standaloneSetup(aiChatController).build();
+        LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
+        validator.afterPropertiesSet();
+        mockMvc = MockMvcBuilders.standaloneSetup(aiChatController)
+                .setValidator(validator)
+                .build();
     }
 
     @Test
@@ -49,15 +55,13 @@ class AiChatControllerTest {
         PortfolioChatRequest request = new PortfolioChatRequest(userMessage);
         PortfolioChatResponse responseData = new PortfolioChatResponse("Kapil has experience in Java, Spring, Angular, and cloud technologies.");
         when(portfolioChatService.chat(any(PortfolioChatRequest.class))).thenReturn(responseData);
-
         mockMvc.perform(post("/ai/chat")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(OBJECT_MAPPER.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.reply").value(responseData.reply()));
-
         verify(portfolioChatService).chat(any(PortfolioChatRequest.class));
     }
 
@@ -65,10 +69,9 @@ class AiChatControllerTest {
     @DisplayName("POST /ai/chat with empty message is rejected by validation")
     void chat_EmptyMessage_ReturnsBadRequest() throws Exception {
         PortfolioChatRequest request = new PortfolioChatRequest("   ");
-
         mockMvc.perform(post("/ai/chat")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(OBJECT_MAPPER.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -76,7 +79,6 @@ class AiChatControllerTest {
     @DisplayName("POST /ai/chat with missing message is rejected by validation")
     void chat_MissingMessage_ReturnsBadRequest() throws Exception {
         String json = "{}";
-
         mockMvc.perform(post("/ai/chat")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json))
@@ -88,10 +90,9 @@ class AiChatControllerTest {
     void chat_MessageTooLong_ReturnsBadRequest() throws Exception {
         String longMessage = "a".repeat(501);
         PortfolioChatRequest request = new PortfolioChatRequest(longMessage);
-
         mockMvc.perform(post("/ai/chat")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(OBJECT_MAPPER.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
     }
 

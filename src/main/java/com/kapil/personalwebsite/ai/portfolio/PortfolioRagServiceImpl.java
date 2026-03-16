@@ -52,14 +52,13 @@ public class PortfolioRagServiceImpl implements PortfolioRagService {
     }
 
     /**
-     * Formats a single published blog as a line for the BLOGS section (title, slug, category, optional excerpt).
+     * Builds a single-line summary for a published blog (title, slug, category, optional excerpt).
      *
-     * @param blog the published blog to format
-     * @return a single-line summary suitable for appending to the portfolio context
+     * @param blog the published blog to summarize
+     * @return a single-line summary suitable for appending to context or document content
      */
-    private static @NonNull String formatBlogLine(Blog blog) {
-        String line = "- "
-                + AiTextUtils.nullSafe(blog.getTitle())
+    private static @NonNull String buildBlogSummary(Blog blog) {
+        String line = AiTextUtils.nullSafe(blog.getTitle())
                 + " (slug: " + AiTextUtils.nullSafe(blog.getSlug())
                 + (blog.getCategory() != null ? ", category: " + blog.getCategory().name() : "")
                 + ")";
@@ -68,7 +67,6 @@ public class PortfolioRagServiceImpl implements PortfolioRagService {
             String shortExcerpt = excerpt.length() > 80 ? excerpt.substring(0, 80).trim() + "..." : excerpt.trim();
             line += ". " + shortExcerpt;
         }
-        line += ". ";
         return line;
     }
 
@@ -97,9 +95,10 @@ public class PortfolioRagServiceImpl implements PortfolioRagService {
                         projectService.getAllProjects().stream().map(this::buildProjectDocument),
                         educationService.getAllEducations().stream().map(this::buildEducationDocument),
                         certificationService.getAllCertifications().stream().map(this::buildCertificationDocument),
-                        skillService.getAllSkills().stream().map(this::buildSkillDocument)
+                        skillService.getAllSkills().stream().map(this::buildSkillDocument),
+                        blogPublicService.getPublishedBlogs().stream().map(this::buildBlogDocument)
                 )
-                .flatMap(s -> s)
+                .flatMap(java.util.function.Function.identity())
                 .toList();
     }
 
@@ -157,7 +156,7 @@ public class PortfolioRagServiceImpl implements PortfolioRagService {
                 sb.append(PortfolioAiConstants.BLOG_TRUNCATION_SUFFIX);
                 break;
             }
-            String line = formatBlogLine(blog);
+            String line = "- " + buildBlogSummary(blog) + ". ";
             if (used + line.length() > limit) {
                 sb.append(line, 0, limit - used).append(" ");
                 used = limit;
@@ -303,6 +302,23 @@ public class PortfolioRagServiceImpl implements PortfolioRagService {
         return new Document(content.toString(), java.util.Map.of(
                 "type", "skill",
                 "category", skill.getCategoryName()
+        ));
+    }
+
+    /**
+     * Builds a Document for a published Blog so that portfolio chat can retrieve blog-related context.
+     *
+     * @param blog the Blog entity to convert into a Document
+     * @return a Document containing the blog's key metadata for RAG retrieval
+     */
+    private Document buildBlogDocument(Blog blog) {
+        String content = "Blog: " + buildBlogSummary(blog) + ".";
+        String category = blog.getCategory() != null ? blog.getCategory().name() : "";
+        return new Document(content, java.util.Map.of(
+                "type", "blog",
+                "title", blog.getTitle(),
+                "slug", blog.getSlug(),
+                "category", category
         ));
     }
 

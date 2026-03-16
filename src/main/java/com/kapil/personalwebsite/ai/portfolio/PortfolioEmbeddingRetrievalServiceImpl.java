@@ -7,6 +7,8 @@ import org.springframework.ai.embedding.EmbeddingModel;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Default implementation of PortfolioEmbeddingRetrievalService that uses Spring AI to compute embeddings.
@@ -20,6 +22,7 @@ public class PortfolioEmbeddingRetrievalServiceImpl implements PortfolioEmbeddin
 
     private final EmbeddingModel embeddingModel;
     private final PortfolioRagService portfolioRagService;
+    private final Map<String, float[]> documentEmbeddingCache = new ConcurrentHashMap<>();
 
     public PortfolioEmbeddingRetrievalServiceImpl(EmbeddingModel embeddingModel,
                                                   PortfolioRagService portfolioRagService) {
@@ -56,7 +59,10 @@ public class PortfolioEmbeddingRetrievalServiceImpl implements PortfolioEmbeddin
      * @return a ScoredDocument containing the original document and its similarity score
      */
     private ScoredDocument scoreDocument(Document document, float[] queryEmbedding) {
-        float[] docEmbedding = embeddingModel.embed(document);
+        String content = document.getText();
+        String cacheKey = document.getId();
+        float[] docEmbedding = documentEmbeddingCache.computeIfAbsent(cacheKey,
+                key -> embeddingModel.embed(content != null ? content : ""));
         return new ScoredDocument(document, cosineSimilarity(queryEmbedding, docEmbedding));
     }
 
