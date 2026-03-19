@@ -217,13 +217,8 @@ public class PortfolioRagServiceImpl implements PortfolioRagService {
     private Document buildProjectDocument(Project project) {
         StringBuilder content = new StringBuilder();
         content.append("Project: ").append(AiTextUtils.nullSafe(project.getTitle())).append(". ");
-        String description = project.getShortDescription() != null
-                ? project.getShortDescription()
-                : project.getDescription();
-        content.append(AiTextUtils.nullSafe(description)).append(" ");
-        if (project.getTechnologies() != null && !project.getTechnologies().isEmpty()) {
-            content.append("Technologies: ").append(String.join(", ", project.getTechnologies())).append(". ");
-        }
+        content.append(AiTextUtils.nullSafe(project.getShortDescription())).append(" ");
+        appendProjectNarrativeDetails(content, project);
         return new Document(content.toString(), java.util.Map.of(
                 "type", "project",
                 "title", project.getTitle(),
@@ -353,18 +348,22 @@ public class PortfolioRagServiceImpl implements PortfolioRagService {
      */
     private void appendProjectLine(StringBuilder sb, Project project) {
         sb.append("- ").append(AiTextUtils.nullSafe(project.getTitle())).append(": ")
-                .append(AiTextUtils.nullSafe(project.getShortDescription() != null
-                        ? project.getShortDescription()
-                        : project.getDescription()))
-                .append(" ");
-        if (project.getTechnologies() != null && !project.getTechnologies().isEmpty()) {
-            sb.append("Technologies: ").append(String.join(", ", project.getTechnologies())).append(". ");
-        }
+                .append(AiTextUtils.nullSafe(project.getShortDescription()))
+                .append(". ");
+        appendProjectNarrativeDetails(sb, project);
         if (project.getProjectUrl() != null && !project.getProjectUrl().isBlank()) {
             sb.append("Project URL: ").append(project.getProjectUrl()).append(". ");
         }
-        if (project.getGithubUrl() != null && !project.getGithubUrl().isBlank()) {
-            sb.append("GitHub URL: ").append(project.getGithubUrl()).append(". ");
+        if (project.getGithubLinks() != null && !project.getGithubLinks().isEmpty()) {
+            for (Project.GithubLink link : project.getGithubLinks()) {
+                if (link == null || link.getUrl() == null || link.getUrl().isBlank()) {
+                    continue;
+                }
+                String label = (link.getLabel() == null || link.getLabel().isBlank())
+                        ? "GitHub"
+                        : link.getLabel();
+                sb.append("GitHub (").append(label).append("): ").append(link.getUrl()).append(". ");
+            }
         }
         if (project.getStartDate() != null || project.getEndDate() != null) {
             sb.append("Timeline: ")
@@ -463,25 +462,50 @@ public class PortfolioRagServiceImpl implements PortfolioRagService {
     }
 
     /**
-     * Appends experience details (responsibilities, achievements, technologies) to the StringBuilder.
+     * Appends experience details (summary, impact, highlights) to the StringBuilder.
      *
      * @param sb         the StringBuilder to append to
      * @param experience the Experience entity
      */
     private void appendExperienceDetails(StringBuilder sb, Experience experience) {
-        if (experience.getDescription() != null && !experience.getDescription().isEmpty()) {
-            sb.append("Responsibilities: ")
-                    .append(String.join(" ", experience.getDescription()))
-                    .append(" ");
+        appendListSection(sb, "Summary", experience.getSummary(), " ", false);
+        appendListSection(sb, "Impact", experience.getImpact(), " ", false);
+        appendListSection(sb, "Highlights", experience.getHighlights(), ", ", true);
+    }
+
+    /**
+     * Appends project narrative sections used by both context and document builders.
+     *
+     * @param sb      the StringBuilder to append to
+     * @param project the project entity containing narrative sections
+     */
+    private void appendProjectNarrativeDetails(StringBuilder sb, Project project) {
+        appendListSection(sb, "Overview", project.getOverview(), " ", false);
+        appendListSection(sb, "Key features", project.getKeyFeatures(), " ", false);
+        appendListSection(sb, "Engineering", project.getEngineering(), " ", false);
+        appendListSection(sb, "Decisions", project.getDecisions(), " ", false);
+        appendListSection(sb, "Impact", project.getImpact(), " ", false);
+        appendListSection(sb, "Highlights", project.getHighlights(), ", ", true);
+    }
+
+    /**
+     * Appends a labeled list section to a builder when the list has content.
+     *
+     * @param sb           builder to append to
+     * @param label        section label
+     * @param values       values to join
+     * @param delimiter    delimiter used when joining values
+     * @param appendPeriod whether to append a trailing period before whitespace
+     */
+    private void appendListSection(StringBuilder sb, String label, List<String> values, String delimiter, boolean appendPeriod) {
+        if (values == null || values.isEmpty()) {
+            return;
         }
-        if (experience.getAchievements() != null && !experience.getAchievements().isEmpty()) {
-            sb.append("Key achievements: ")
-                    .append(String.join(" ", experience.getAchievements()))
-                    .append(" ");
+        sb.append(label).append(": ").append(String.join(delimiter, values));
+        if (appendPeriod) {
+            sb.append(".");
         }
-        if (experience.getTechnologies() != null && !experience.getTechnologies().isEmpty()) {
-            sb.append("Technologies: ").append(String.join(", ", experience.getTechnologies())).append(". ");
-        }
+        sb.append(" ");
     }
 
 }

@@ -56,6 +56,19 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Handles project not found exceptions.
+     *
+     * @param ex      the exception
+     * @param request the HTTP request
+     * @return a ResponseEntity with error details
+     */
+    @ExceptionHandler(ProjectNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleProjectNotFound(ProjectNotFoundException ex, HttpServletRequest request) {
+        LOGGER.warn("Project not found: {}", ex.getMessage());
+        return createErrorResponse(HttpStatus.NOT_FOUND, "Project Not Found", ex.getMessage(), request);
+    }
+
+    /**
      * Handles email sending exceptions.
      *
      * @param ex      the exception

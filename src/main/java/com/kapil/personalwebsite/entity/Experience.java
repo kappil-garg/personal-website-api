@@ -45,27 +45,27 @@ public class Experience {
     private String location;
 
     @NotBlank(message = "Start date is required")
-    @Size(max = 7, message = "Start date must be in MM-YYYY format")
-    @Pattern(regexp = "^(0[1-9]|1[0-2])-\\d{4}$", message = "Start date must be in MM-YYYY format (e.g., 12-2025)")
+    @Size(max = 7, message = "Start date must be in YYYY-MM format")
+    @Pattern(regexp = "^\\d{4}-(0[1-9]|1[0-2])$", message = "Start date must be in YYYY-MM format (e.g., 2025-12)")
     @Field("start_date")
     private String startDate;
 
-    @Size(max = 7, message = "End date must be in MM-YYYY format")
-    @Pattern(regexp = "^(0[1-9]|1[0-2])-\\d{4}$", message = "End date must be in MM-YYYY format (e.g., 12-2025)")
+    @Size(max = 7, message = "End date must be in YYYY-MM format")
+    @Pattern(regexp = "^\\d{4}-(0[1-9]|1[0-2])$", message = "End date must be in YYYY-MM format (e.g., 2025-12)")
     @Field("end_date")
     private String endDate;
 
     @Field("is_current")
     private Boolean isCurrent = false;
 
-    @Field("description")
-    private List<String> description;
+    @Field("summary")
+    private List<String> summary;
 
-    @Field("technologies")
-    private List<String> technologies;
+    @Field("impact")
+    private List<String> impact;
 
-    @Field("achievements")
-    private List<String> achievements;
+    @Field("highlights")
+    private List<String> highlights;
 
     @Field("company_logo")
     private String companyLogo;

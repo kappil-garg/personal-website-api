@@ -29,16 +29,15 @@ class ProjectControllerTest {
     private ProjectController projectController;
 
     private static List<Project> getProjectList() {
-        Project project1 = createProject("project-1", "Project A", "Description A", 1);
-        Project project2 = createProject("project-2", "Project B", "Description B", 2);
+        Project project1 = createProject("project-1", "Project A", 1);
+        Project project2 = createProject("project-2", "Project B", 2);
         return Arrays.asList(project1, project2);
     }
 
-    private static Project createProject(String id, String title, String description, int displayOrder) {
+    private static Project createProject(String id, String title, int displayOrder) {
         Project project = new Project();
         project.setId(id);
         project.setTitle(title);
-        project.setDescription(description);
         project.setIsActive(true);
         project.setDisplayOrder(displayOrder);
         return project;
@@ -86,7 +85,7 @@ class ProjectControllerTest {
 
     @Test
     void getAllProjects_ShouldReturnApiResponseWrapper() {
-        Project project = createProject("project-1", "Test Project", "Test Description", 1);
+        Project project = createProject("project-1", "Test Project", 1);
         List<Project> projects = List.of(project);
         when(projectService.getAllProjects()).thenReturn(projects);
         ResponseEntity<ApiResponse<List<Project>>> response = projectController.getAllProjects();
