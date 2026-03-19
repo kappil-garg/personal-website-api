@@ -63,7 +63,6 @@ public enum BlogCategory {
                 .replaceAll("_+", "_")
                 .replaceAll("^_|_$", "")
                 .toUpperCase();
-
         return BlogCategory.valueOf(normalized);
     }
 

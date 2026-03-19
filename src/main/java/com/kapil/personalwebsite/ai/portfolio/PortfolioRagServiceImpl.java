@@ -501,7 +501,14 @@ public class PortfolioRagServiceImpl implements PortfolioRagService {
         if (values == null || values.isEmpty()) {
             return;
         }
-        sb.append(label).append(": ").append(String.join(delimiter, values));
+        List<String> sanitizedValues = values.stream()
+                .filter(value -> value != null && !value.isBlank())
+                .map(String::trim)
+                .toList();
+        if (sanitizedValues.isEmpty()) {
+            return;
+        }
+        sb.append(label).append(": ").append(String.join(delimiter, sanitizedValues));
         if (appendPeriod) {
             sb.append(".");
         }
