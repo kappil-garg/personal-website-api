@@ -1,64 +1,69 @@
 package com.kapil.personalwebsite.entity;
 
+import lombok.Getter;
+
 /**
  * Enum representing the category of a blog post used for classification and filtering.
  *
  * @author Kapil Garg
  */
+@Getter
 public enum BlogCategory {
 
     /**
-     * Technical blog posts about programming, software development, and technology
+     * Posts focused on backend engineering, distributed systems, and architecture
      */
-    TECHNICAL,
+    BACKEND_AND_SYSTEMS("Backend & Systems"),
 
     /**
-     * Personal life experiences, thoughts, and reflections
+     * Posts about AI tooling, practical engineering, and implementation patterns
      */
-    LIFE,
+    AI_AND_ENGINEERING("AI & Engineering"),
 
     /**
-     * Career-related content including professional development and industry insights
+     * Career-related content including professional development and growth
      */
-    CAREER;
+    CAREER_AND_GROWTH("Career & Growth"),
 
     /**
-     * Gets the display label for the category.
-     *
-     * @return the human-readable label for the category
+     * Posts covering foundational concepts and continuous learning topics
      */
-    public String getLabel() {
-        return switch (this) {
-            case TECHNICAL -> "Technical";
-            case LIFE -> "Life";
-            case CAREER -> "Career";
-        };
+    LEARNING_AND_FUNDAMENTALS("Learning & Fundamentals"),
+
+    /**
+     * Personal reflections, stories, and non-technical experiences
+     */
+    PERSONAL("Personal");
+
+    private final String label;
+
+    BlogCategory(String label) {
+        this.label = label;
     }
 
     /**
-     * Gets the icon for the category.
+     * Resolves a category from either enum name (e.g. AI_AND_ENGINEERING) or display label (e.g. "AI & Engineering").
      *
-     * @return the emoji icon for the category
+     * @param raw stored category value
+     * @return resolved enum constant
      */
-    public String getIcon() {
-        return switch (this) {
-            case TECHNICAL -> "fas fa-code";
-            case LIFE -> "fas fa-heart";
-            case CAREER -> "fas fa-briefcase";
-        };
-    }
-
-    /**
-     * Gets the description for the category.
-     *
-     * @return the description of what this category represents
-     */
-    public String getDescription() {
-        return switch (this) {
-            case TECHNICAL -> "Technical posts about programming, software development, and technology";
-            case LIFE -> "Personal experiences, thoughts, and life reflections";
-            case CAREER -> "Career development, professional insights, and industry trends";
-        };
+    public static BlogCategory fromStoredValue(String raw) {
+        if (raw == null || raw.isBlank()) {
+            throw new IllegalArgumentException("Blog category cannot be null or blank");
+        }
+        String value = raw.trim();
+        for (BlogCategory category : values()) {
+            if (category.name().equalsIgnoreCase(value) || category.getLabel().equalsIgnoreCase(value)) {
+                return category;
+            }
+        }
+        String normalized = value
+                .replace("&", "AND")
+                .replaceAll("[^A-Za-z0-9]+", "_")
+                .replaceAll("_+", "_")
+                .replaceAll("^_|_$", "")
+                .toUpperCase();
+        return BlogCategory.valueOf(normalized);
     }
 
 }

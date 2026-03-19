@@ -107,6 +107,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/portfolio").permitAll()
                         .requestMatchers(HttpMethod.GET, "/experiences").permitAll()
                         .requestMatchers(HttpMethod.GET, "/projects").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/projects/*").permitAll()
                         .requestMatchers(HttpMethod.GET, "/educations").permitAll()
                         .requestMatchers(HttpMethod.GET, "/certifications").permitAll()
                         .requestMatchers(HttpMethod.GET, "/skills").permitAll()

@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Implementation of ProjectService for project operations in the personal website.
@@ -35,6 +36,19 @@ public class ProjectServiceImpl implements ProjectService {
     public List<Project> getAllProjects() {
         LOGGER.info("Fetching all active projects for public access");
         return projectRepository.findByIsActiveTrueOrderByDisplayOrderDesc();
+    }
+
+    /**
+     * Retrieves an active project by ID.
+     *
+     * @param id project ID
+     * @return optional active project
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Project> getProjectById(String id) {
+        LOGGER.info("Fetching active project by ID: {}", id);
+        return projectRepository.findByIdAndIsActiveTrue(id);
     }
 
 }

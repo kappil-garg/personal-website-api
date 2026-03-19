@@ -5,6 +5,7 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Repository interface for Project entity operations in the database.
@@ -20,5 +21,13 @@ public interface ProjectRepository extends MongoRepository<Project, String> {
      * @return a list of active projects sorted by display order (descending)
      */
     List<Project> findByIsActiveTrueOrderByDisplayOrderDesc();
+
+    /**
+     * Finds an active project by ID.
+     *
+     * @param id project ID
+     * @return optional active project
+     */
+    Optional<Project> findByIdAndIsActiveTrue(String id);
 
 }
