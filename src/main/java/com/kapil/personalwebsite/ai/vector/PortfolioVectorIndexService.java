@@ -35,8 +35,7 @@ public class PortfolioVectorIndexService {
     @Value("${app.features.embeddings.index-batch-delay-ms}")
     private long indexBatchDelayMs;
 
-    public PortfolioVectorIndexService(VectorStore vectorStore,
-                                       PortfolioChunkDocumentService chunkDocumentService) {
+    public PortfolioVectorIndexService(VectorStore vectorStore, PortfolioChunkDocumentService chunkDocumentService) {
         this.vectorStore = vectorStore;
         this.chunkDocumentService = chunkDocumentService;
     }
@@ -46,11 +45,12 @@ public class PortfolioVectorIndexService {
      * Exceptions are caught and logged; failure is non-fatal for the caller.
      */
     @Async
+    @CacheEvict(value = "portfolioSummary", allEntries = true)
     public void rebuildIndexAsync() {
         try {
-            rebuildIndex();
+            rebuildIndexTracked(null);
         } catch (Exception ex) {
-            LOGGER.warn("Async portfolio vector reindex failed: {}", ex.getMessage());
+            LOGGER.warn("Async portfolio vector reindex failed", ex);
         }
     }
 
@@ -59,19 +59,20 @@ public class PortfolioVectorIndexService {
      * Progress and outcome are written back to {@code job} as the rebuild proceeds.
      */
     @Async
+    @CacheEvict(value = "portfolioSummary", allEntries = true)
     public void rebuildIndexAsync(ReindexJob job) {
         try {
             rebuildIndexTracked(job);
             job.succeed();
         } catch (Exception ex) {
-            LOGGER.warn("Tracked async portfolio vector reindex failed: {}", ex.getMessage());
+            LOGGER.warn("Tracked async portfolio vector reindex failed", ex);
             job.fail(ex.getMessage());
         }
     }
 
     /**
      * Removes all portfolio chunks from the store and re-adds them from current Mongo data.
-     * Also evicts the portfolio summary cache so the next chat request picks up fresh data.
+     * Evicts portfolioSummary cache to ensure summaries are regenerated with new vectors on next access.
      */
     @CacheEvict(value = "portfolioSummary", allEntries = true)
     public void rebuildIndex() {
@@ -101,15 +102,19 @@ public class PortfolioVectorIndexService {
         if (job != null) {
             job.setTotalChunks(total);
         }
-        LOGGER.info("Portfolio vector index rebuild: embedding {} chunk(s) in batches of {}", total, indexBatchSize);
+        int batchSize = Math.max(1, indexBatchSize);
+        if (batchSize != indexBatchSize) {
+            LOGGER.warn("Portfolio vector index: index-batch-size {} is invalid; using {}", indexBatchSize, batchSize);
+        }
+        LOGGER.info("Portfolio vector index rebuild: embedding {} chunk(s) in batches of {}", total, batchSize);
         try {
-            for (int i = 0; i < total; i += indexBatchSize) {
-                List<Document> batch = chunks.subList(i, Math.min(i + indexBatchSize, total));
+            for (int i = 0; i < total; i += batchSize) {
+                List<Document> batch = chunks.subList(i, Math.min(i + batchSize, total));
                 vectorStore.add(batch);
                 if (job != null) {
                     job.addChunksEmbedded(batch.size());
                 }
-                int added = Math.min(i + indexBatchSize, total);
+                int added = Math.min(i + batchSize, total);
                 LOGGER.debug("Portfolio vector index: added {}/{} chunk(s)", added, total);
                 if (added < total && indexBatchDelayMs > 0) {
                     Thread.sleep(indexBatchDelayMs);
@@ -118,7 +123,8 @@ public class PortfolioVectorIndexService {
             LOGGER.info("Portfolio vector index rebuilt with {} chunk(s)", total);
         } catch (InterruptedException ie) {
             Thread.currentThread().interrupt();
-            LOGGER.warn("Portfolio vector index rebuild interrupted");
+            LOGGER.warn("Portfolio vector index rebuild interrupted {}", ie.getMessage());
+            throw new IllegalStateException("Portfolio vector index rebuild interrupted", ie);
         } catch (Exception ex) {
             LOGGER.error("Portfolio vector index rebuild failed during add", ex);
             throw ex;

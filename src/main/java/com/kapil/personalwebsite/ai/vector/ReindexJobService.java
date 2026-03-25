@@ -37,7 +37,7 @@ public class ReindexJobService {
         return job;
     }
 
-    public Optional<ReindexJob> getJob(String jobId) {
+    public synchronized Optional<ReindexJob> getJob(String jobId) {
         return Optional.ofNullable(jobs.get(jobId));
     }
 

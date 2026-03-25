@@ -1,5 +1,6 @@
 package com.kapil.personalwebsite.ai.vector;
 
+import com.fasterxml.jackson.annotation.JsonGetter;
 import lombok.AccessLevel;
 import lombok.Getter;
 
@@ -37,6 +38,14 @@ public class ReindexJob {
 
     void addChunksEmbedded(int count) {
         chunksEmbedded.addAndGet(count);
+    }
+
+    /**
+     * Progress field for the reindex status JSON response invoked by the frontend polling endpoint.
+     */
+    @JsonGetter("chunksEmbedded")
+    public int getChunksEmbedded() {
+        return chunksEmbedded.get();
     }
 
     void succeed() {

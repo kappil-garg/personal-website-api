@@ -106,13 +106,14 @@ public final class SecurityStringUtils {
     }
 
     /**
-     * Checks if a string is configured, meaning it is not blank and not the literal string "null".
+     * Checks if a configuration value is present and usable.
+     * Considers a value unusable if it is null, empty, whitespace-only, or the string "null" (case-insensitive).
      *
      * @param value the string to check
      * @return true if the value is present and usable
      */
     public static boolean isConfigured(String value) {
-        return isNotBlank(value) && !"null".equals(value);
+        return isNotBlank(value) && !"null".equalsIgnoreCase(value);
     }
 
     /**

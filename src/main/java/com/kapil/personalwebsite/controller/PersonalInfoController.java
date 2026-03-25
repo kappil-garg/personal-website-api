@@ -65,13 +65,7 @@ public class PersonalInfoController {
     public ResponseEntity<ApiResponse<PersonalInfo>> updatePersonalInfo(@Valid @RequestBody PersonalInfo personalInfo) {
         LOGGER.info("PUT /portfolio - Updating personal information (admin)");
         PersonalInfo updatedInfo = personalInfoService.updatePersonalInfo(personalInfo);
-        portfolioVectorIndexService.ifAvailable(svc -> {
-            try {
-                svc.rebuildIndex();
-            } catch (Exception ex) {
-                LOGGER.warn("Portfolio vector reindex after personal info update failed: {}", ex.getMessage());
-            }
-        });
+        portfolioVectorIndexService.ifAvailable(PortfolioVectorIndexService::rebuildIndexAsync);
         ApiResponse<PersonalInfo> response = ApiResponse.success(
                 updatedInfo,
                 "Personal information updated successfully"

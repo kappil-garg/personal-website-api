@@ -181,6 +181,15 @@ public class BlogAdminServiceImpl implements BlogAdminService {
      */
     private void applyUpdateRequest(Blog existingBlog, BlogUpdateRequest request) {
         String previousContent = existingBlog.getContent();
+        if (request.slug() != null && !request.slug().equals(existingBlog.getSlug())) {
+            boolean slugTakenByOther = blogRepository.findBySlugAndIsActiveTrue(request.slug())
+                    .filter(other -> !other.getId().equals(existingBlog.getId()))
+                    .isPresent();
+            if (slugTakenByOther) {
+                throw new BlogSlugAlreadyExistsException(
+                        "Blog with slug '" + request.slug() + "' already exists");
+            }
+        }
         existingBlog.setTitle(request.title());
         existingBlog.setContent(request.content());
         existingBlog.setSlug(request.slug());

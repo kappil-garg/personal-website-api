@@ -52,7 +52,7 @@ public class PortfolioChatServiceImpl implements PortfolioChatService {
      *
      * @param meta the metadata map from the document, may be null
      * @param key  the key to look up in the metadata map
-     * @return the string value associated with the key, or an empty string if the key
+     * @return the string value associated with the key, or an empty string
      */
     private static String metaString(Map<String, Object> meta, String key) {
         if (meta == null) {

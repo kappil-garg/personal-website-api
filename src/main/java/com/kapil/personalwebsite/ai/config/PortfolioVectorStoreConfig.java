@@ -11,6 +11,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Conditional;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -27,7 +28,7 @@ import javax.sql.DataSource;
 public class PortfolioVectorStoreConfig {
 
     @Bean(name = "portfolioVectorStoreDataSource")
-    @ConditionalOnProperty(prefix = "app.vector-store.pgvector", name = "jdbc-url")
+    @Conditional(NonBlankPortfolioVectorJdbcUrlCondition.class)
     public DataSource portfolioVectorStoreDataSource(
             @Value("${app.vector-store.pgvector.jdbc-url}") String jdbcUrl,
             @Value("${app.vector-store.pgvector.username}") String username,
