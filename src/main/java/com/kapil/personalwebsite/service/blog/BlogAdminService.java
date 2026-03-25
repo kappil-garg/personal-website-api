@@ -1,5 +1,7 @@
 package com.kapil.personalwebsite.service.blog;
 
+import com.kapil.personalwebsite.dto.blog.BlogCreateRequest;
+import com.kapil.personalwebsite.dto.blog.BlogUpdateRequest;
 import com.kapil.personalwebsite.entity.Blog;
 
 import java.util.List;
@@ -37,22 +39,21 @@ public interface BlogAdminService {
     Optional<Blog> getBlogById(String id);
 
     /**
-     * Creates a new blog.
+     * Creates a new blog from the supplied request DTO.
      *
-     * @param blog the blog to create
-     * @return the created blog
-     * @throws IllegalArgumentException if a blog with the same slug already exists
+     * @param request the creation request containing author-supplied fields
+     * @return the persisted blog
      */
-    Blog createBlog(Blog blog);
+    Blog createBlog(BlogCreateRequest request);
 
     /**
-     * Updates an existing blog.
+     * Updates an existing blog from the supplied request DTO.
      *
-     * @param id          the ID of the blog to update
-     * @param blogDetails the updated blog details
+     * @param id      the ID of the blog to update
+     * @param request the update request containing the new field values
      * @return the updated blog
      */
-    Blog updateBlog(String id, Blog blogDetails);
+    Blog updateBlog(String id, BlogUpdateRequest request);
 
     /**
      * Deletes a blog by its ID (soft delete).

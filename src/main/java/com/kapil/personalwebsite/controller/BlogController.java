@@ -1,12 +1,17 @@
 package com.kapil.personalwebsite.controller;
 
+import com.kapil.personalwebsite.ai.vector.PortfolioVectorIndexService;
 import com.kapil.personalwebsite.dto.ApiResponse;
+import com.kapil.personalwebsite.dto.blog.BlogCreateRequest;
+import com.kapil.personalwebsite.dto.blog.BlogUpdateRequest;
 import com.kapil.personalwebsite.entity.Blog;
 import com.kapil.personalwebsite.mapper.BlogResponseMapper;
 import com.kapil.personalwebsite.service.blog.BlogAdminService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -28,6 +33,7 @@ public class BlogController {
     private static final Logger LOGGER = LoggerFactory.getLogger(BlogController.class);
 
     private final BlogAdminService blogAdminService;
+    private final ObjectProvider<PortfolioVectorIndexService> portfolioVectorIndexService;
 
     /**
      * Retrieves all blogs (admin only).
@@ -65,28 +71,19 @@ public class BlogController {
     public ResponseEntity<ApiResponse<Blog>> getBlogById(@PathVariable String id) {
         LOGGER.info("GET /blogs/id/{} - Fetching blog by ID (admin)", id);
         Optional<Blog> blog = blogAdminService.getBlogById(id);
-        if (blog.isPresent()) {
-            ApiResponse<Blog> response = ApiResponse.success(blog.get(),
-                    String.format("Blog with ID '%s' retrieved successfully", id));
-            return ResponseEntity.ok(response);
-        } else {
-            ApiResponse<Blog> response = ApiResponse.error(
-                    String.format("Blog with ID '%s' not found", id),
-                    HttpStatus.NOT_FOUND.value());
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
-        }
+        return BlogResponseMapper.buildBlogByIdResponse(id, blog.orElse(null));
     }
 
     /**
      * Creates a new blog (admin only).
      *
-     * @param blog the blog to create
      * @return a ResponseEntity containing the created blog
      */
     @PostMapping
-    public ResponseEntity<ApiResponse<Blog>> createBlog(@RequestBody Blog blog) {
-        LOGGER.info("POST /blogs - Creating new blog: {} (admin)", blog.getTitle());
-        Blog createdBlog = blogAdminService.createBlog(blog);
+    public ResponseEntity<ApiResponse<Blog>> createBlog(@Valid @RequestBody BlogCreateRequest request) {
+        LOGGER.info("POST /blogs - Creating new blog: {} (admin)", request.title());
+        Blog createdBlog = blogAdminService.createBlog(request);
+        triggerPortfolioVectorReindex();
         ApiResponse<Blog> response = ApiResponse.success(createdBlog, "Blog created successfully");
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -94,14 +91,16 @@ public class BlogController {
     /**
      * Updates an existing blog (admin only).
      *
-     * @param id   the ID of the blog to update
-     * @param blog the updated blog details
+     * @param id      the ID of the blog to update
+     * @param request the updated blog data
      * @return a ResponseEntity containing the updated blog if found, or a 404 status if not found
      */
     @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<Blog>> updateBlog(@PathVariable String id, @RequestBody Blog blog) {
+    public ResponseEntity<ApiResponse<Blog>> updateBlog(@PathVariable String id,
+                                                        @Valid @RequestBody BlogUpdateRequest request) {
         LOGGER.info("PUT /blogs/{} - Updating blog (admin)", id);
-        Blog updatedBlog = blogAdminService.updateBlog(id, blog);
+        Blog updatedBlog = blogAdminService.updateBlog(id, request);
+        triggerPortfolioVectorReindex();
         ApiResponse<Blog> response = ApiResponse.success(updatedBlog, "Blog updated successfully");
         return ResponseEntity.ok(response);
     }
@@ -116,6 +115,7 @@ public class BlogController {
     public ResponseEntity<Void> deleteBlog(@PathVariable String id) {
         LOGGER.info("DELETE /blogs/{} - Deleting blog", id);
         blogAdminService.deleteBlog(id);
+        triggerPortfolioVectorReindex();
         return ResponseEntity.noContent().build();
     }
 
@@ -129,6 +129,7 @@ public class BlogController {
     public ResponseEntity<ApiResponse<Blog>> publishBlog(@PathVariable String id) {
         LOGGER.info("PUT /blogs/{}/publish - Publishing blog", id);
         Blog publishedBlog = blogAdminService.publishBlog(id);
+        triggerPortfolioVectorReindex();
         ApiResponse<Blog> response = ApiResponse.success(publishedBlog, "Blog published successfully");
         return ResponseEntity.ok(response);
     }
@@ -143,8 +144,17 @@ public class BlogController {
     public ResponseEntity<ApiResponse<Blog>> unpublishBlog(@PathVariable String id) {
         LOGGER.info("PUT /blogs/{}/unpublish - Unpublishing blog", id);
         Blog unpublishedBlog = blogAdminService.unpublishBlog(id);
+        triggerPortfolioVectorReindex();
         ApiResponse<Blog> response = ApiResponse.success(unpublishedBlog, "Blog unpublished successfully");
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Schedules an async portfolio vector reindex after a blog mutation.
+     * Returns immediately; the rebuild runs on a background thread.
+     */
+    private void triggerPortfolioVectorReindex() {
+        portfolioVectorIndexService.ifAvailable(PortfolioVectorIndexService::rebuildIndexAsync);
     }
 
 }

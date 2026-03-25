@@ -100,8 +100,12 @@ dist/
 .env.local
 
 # Local Spring profile overrides
-src/main/resources/application-local.properties
+src/main/resources/application-local*.properties
 
 # Don’t ignore Gradle wrapper files
 !gradle/wrapper/gradle-wrapper.jar
 !gradle/wrapper/gradle-wrapper.properties
+
+# Claude
+.claude/
+CLAUDE.md

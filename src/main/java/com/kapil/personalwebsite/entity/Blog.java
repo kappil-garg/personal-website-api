@@ -1,7 +1,5 @@
 package com.kapil.personalwebsite.entity;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -29,17 +27,12 @@ public class Blog {
     @Id
     private String id;
 
-    @NotBlank(message = "Title is required")
-    @Size(max = 200, message = "Title must not exceed 200 characters")
     @Field("title")
     private String title;
 
-    @NotBlank(message = "Content is required")
     @Field("content")
     private String content;
 
-    @NotBlank(message = "Slug is required")
-    @Size(max = 250, message = "Slug must not exceed 250 characters")
     @Indexed(unique = true)
     @Field("slug")
     private String slug;
@@ -52,7 +45,6 @@ public class Blog {
     @Field("updated_at")
     private LocalDateTime updatedAt;
 
-    @Size(max = 500, message = "Excerpt must not exceed 500 characters")
     @Field("excerpt")
     private String excerpt;
 
@@ -78,7 +70,7 @@ public class Blog {
     private BlogCategory category;
 
     /**
-     * Constructor for creating new blogs.
+     * Constructor for creating new blogs (used in tests).
      *
      * @param title   the blog title
      * @param content the blog content
@@ -95,35 +87,6 @@ public class Blog {
         this.content = content;
         this.slug = slug;
         this.category = category;
-    }
-
-    /**
-     * Increments the view count by 1.
-     */
-    public void incrementViewCount() {
-        this.viewCount = (viewCount != null) ? viewCount + 1 : 1L;
-    }
-
-    /**
-     * Publishes the blog by setting status to PUBLISHED and setting published date.
-     */
-    public void publish() {
-        this.status = BlogStatus.PUBLISHED;
-        this.publishedAt = LocalDateTime.now();
-    }
-
-    /**
-     * Calculates reading time based on content length.
-     * Assumes average reading speed of 200 words per minute.
-     *
-     * @return estimated reading time in minutes
-     */
-    public int calculateReadingTime() {
-        if (content == null || content.trim().isEmpty()) {
-            return 0;
-        }
-        int wordCount = content.trim().split("\\s+").length;
-        return Math.max(1, (int) Math.ceil(wordCount / 200.0));
     }
 
 }

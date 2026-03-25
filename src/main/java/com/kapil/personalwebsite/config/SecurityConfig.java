@@ -9,6 +9,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.util.StringUtils;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
@@ -19,6 +20,8 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
+import com.kapil.personalwebsite.util.SecurityStringUtils;
+import java.util.Arrays;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -104,6 +107,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/blogs/*/view").permitAll()
                         .requestMatchers(HttpMethod.POST, "/blogs/published/*/ask").permitAll()
                         .requestMatchers(HttpMethod.POST, "/ai/chat").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/admin/ai/reindex-portfolio").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/admin/ai/reindex-portfolio/status/*").authenticated()
                         .requestMatchers(HttpMethod.GET, "/portfolio").permitAll()
                         .requestMatchers(HttpMethod.GET, "/experiences").permitAll()
                         .requestMatchers(HttpMethod.GET, "/projects").permitAll()
@@ -126,27 +131,21 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        if (corsAllowedOrigins == null || corsAllowedOrigins.trim().isEmpty() || "null".equals(corsAllowedOrigins)) {
+        if (!SecurityStringUtils.isConfigured(corsAllowedOrigins)) {
             LOGGER.warn("CORS allowed origins not configured. Browser-based frontend requests will be blocked. " +
                     "Set CORS_ALLOWED_ORIGINS environment variable to enable CORS for frontend access.");
             UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
             source.registerCorsConfiguration("/**", configuration);
             return source;
         }
-        String[] origins = corsAllowedOrigins.split(",");
-        for (String origin : origins) {
-            String trimmedOrigin = origin.trim();
-            if (!trimmedOrigin.isEmpty()) {
-                configuration.addAllowedOrigin(trimmedOrigin);
-            }
-        }
-        String[] methods = corsAllowedMethods.split(",");
-        for (String method : methods) {
-            String trimmedMethod = method.trim();
-            if (!trimmedMethod.isEmpty()) {
-                configuration.addAllowedMethod(trimmedMethod);
-            }
-        }
+        Arrays.stream(corsAllowedOrigins.split(","))
+                .map(String::trim)
+                .filter(StringUtils::hasText)
+                .forEach(configuration::addAllowedOrigin);
+        Arrays.stream(corsAllowedMethods.split(","))
+                .map(String::trim)
+                .filter(StringUtils::hasText)
+                .forEach(configuration::addAllowedMethod);
         configuration.addAllowedHeader(AppConstants.CONTENT_TYPE_HEADER);
         configuration.addAllowedHeader(AppConstants.AUTHORIZATION_HEADER);
         configuration.addAllowedHeader(AppConstants.API_KEY_HEADER);

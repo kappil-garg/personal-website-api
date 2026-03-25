@@ -9,7 +9,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
@@ -17,12 +16,14 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.function.Predicate;
 
 /**
- * Rate limiting filter for contact form and blog endpoints to prevent spam and abuse.
+ * Rate limiting filter for contact form, blog, and AI endpoints to prevent spam and abuse.
  * Uses a sliding window algorithm with per-IP address tracking.
  *
  * @author Kapil Garg
@@ -33,37 +34,27 @@ public class RateLimitFilter implements Filter {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RateLimitFilter.class);
 
-    private final RateLimitConfig contactRateLimit;
-    private final RateLimitConfig contactPolishRateLimit;
-    private final RateLimitConfig blogRateLimit;
-    private final RateLimitConfig blogAskRateLimit;
-    private final RateLimitConfig portfolioChatRateLimit;
-
+    private final List<EndpointRule> rules;
     private final boolean trustProxyHeaders;
-
     private final Map<String, RequestWindow> requestCache = new ConcurrentHashMap<>();
 
-    public RateLimitFilter(@Value("${rate.limit.contact.max-requests}") int contactMaxRequests,
-                           @Value("${rate.limit.contact.window-minutes}") int contactWindowMinutes,
-                           @Value("${rate.limit.contact-polish.max-requests}") int contactPolishMaxRequests,
-                           @Value("${rate.limit.contact-polish.window-minutes}") int contactPolishWindowMinutes,
-                           @Value("${rate.limit.blog.max-requests}") int blogMaxRequests,
-                           @Value("${rate.limit.blog.window-minutes}") int blogWindowMinutes,
-                           @Value("${rate.limit.blog-ask.max-requests}") int blogAskMaxRequests,
-                           @Value("${rate.limit.blog-ask.window-minutes}") int blogAskWindowMinutes,
-                           @Value("${rate.limit.portfolio-chat.max-requests}") int portfolioChatMaxRequests,
-                           @Value("${rate.limit.portfolio-chat.window-minutes}") int portfolioChatWindowMinutes,
-                           @Value("${rate.limit.trust-proxy-headers:false}") boolean trustProxyHeaders) {
-        this.contactRateLimit = new RateLimitConfig(contactMaxRequests, contactWindowMinutes);
-        this.contactPolishRateLimit = new RateLimitConfig(contactPolishMaxRequests, contactPolishWindowMinutes);
-        this.blogRateLimit = new RateLimitConfig(blogMaxRequests, blogWindowMinutes);
-        this.blogAskRateLimit = new RateLimitConfig(blogAskMaxRequests, blogAskWindowMinutes);
-        this.portfolioChatRateLimit = new RateLimitConfig(portfolioChatMaxRequests, portfolioChatWindowMinutes);
-        this.trustProxyHeaders = trustProxyHeaders;
+    public RateLimitFilter(RateLimitProperties properties) {
+        this.trustProxyHeaders = properties.trustProxyHeaders();
+        this.rules = List.of(
+                new EndpointRule(this::isContactPolishEndpoint, AppConstants.ENDPOINT_TYPE_CONTACT_POLISH, toConfig(properties.contactPolish())),
+                new EndpointRule(this::isContactEndpoint, AppConstants.ENDPOINT_TYPE_CONTACT, toConfig(properties.contact())),
+                new EndpointRule(this::isBlogAskEndpoint, AppConstants.ENDPOINT_TYPE_BLOG_ASK, toConfig(properties.blogAsk())),
+                new EndpointRule(this::isPortfolioChatEndpoint, AppConstants.ENDPOINT_TYPE_PORTFOLIO_CHAT, toConfig(properties.portfolioChat())),
+                new EndpointRule(this::isBlogEndpoint, AppConstants.ENDPOINT_TYPE_BLOG, toConfig(properties.blog()))
+        );
         if (trustProxyHeaders) {
             LOGGER.warn("Proxy header trust is enabled. Ensure your proxy/load balancer strips " +
                     "client-supplied X-Forwarded-For and X-Real-IP headers to prevent rate limit bypass.");
         }
+    }
+
+    private static RateLimitConfig toConfig(RateLimitProperties.EndpointLimitConfig cfg) {
+        return new RateLimitConfig(cfg.maxRequests(), cfg.windowMinutes());
     }
 
     @Override
@@ -71,55 +62,21 @@ public class RateLimitFilter implements Filter {
                          FilterChain chain) throws IOException, ServletException {
         HttpServletRequest httpRequest = (HttpServletRequest) request;
         HttpServletResponse httpResponse = (HttpServletResponse) response;
-        // Bypass rate limiting for OPTIONS requests
         if (HttpMethod.OPTIONS.matches(httpRequest.getMethod())) {
             chain.doFilter(request, response);
             return;
         }
-        if (isContactPolishEndpoint(httpRequest)) {
-            String clientIp = getClientIp(httpRequest);
-            String rateLimitKey = buildRateLimitKey(clientIp, AppConstants.ENDPOINT_TYPE_CONTACT_POLISH);
-            if (isRateLimitExceeded(rateLimitKey, contactPolishRateLimit)) {
-                LOGGER.warn("Rate limit exceeded for contact polish endpoint - IP: {} - Path: {}",
-                        clientIp, httpRequest.getRequestURI());
-                sendRateLimitExceededResponse(httpResponse, contactPolishRateLimit.windowMinutes());
-                return;
-            }
-        } else if (isContactEndpoint(httpRequest)) {
-            String clientIp = getClientIp(httpRequest);
-            String rateLimitKey = buildRateLimitKey(clientIp, AppConstants.ENDPOINT_TYPE_CONTACT);
-            if (isRateLimitExceeded(rateLimitKey, contactRateLimit)) {
-                LOGGER.warn("Rate limit exceeded for contact endpoint - IP: {} - Path: {}",
-                        clientIp, httpRequest.getRequestURI());
-                sendRateLimitExceededResponse(httpResponse, contactRateLimit.windowMinutes());
-                return;
-            }
-        } else if (isBlogAskEndpoint(httpRequest)) {
-            String clientIp = getClientIp(httpRequest);
-            String rateLimitKey = buildRateLimitKey(clientIp, AppConstants.ENDPOINT_TYPE_BLOG_ASK);
-            if (isRateLimitExceeded(rateLimitKey, blogAskRateLimit)) {
-                LOGGER.warn("Rate limit exceeded for blog ask endpoint - IP: {} - Path: {}",
-                        clientIp, httpRequest.getRequestURI());
-                sendRateLimitExceededResponse(httpResponse, blogAskRateLimit.windowMinutes());
-                return;
-            }
-        } else if (isPortfolioChatEndpoint(httpRequest)) {
-            String clientIp = getClientIp(httpRequest);
-            String rateLimitKey = buildRateLimitKey(clientIp, AppConstants.ENDPOINT_TYPE_PORTFOLIO_CHAT);
-            if (isRateLimitExceeded(rateLimitKey, portfolioChatRateLimit)) {
-                LOGGER.warn("Rate limit exceeded for portfolio chat endpoint - IP: {} - Path: {}",
-                        clientIp, httpRequest.getRequestURI());
-                sendRateLimitExceededResponse(httpResponse, portfolioChatRateLimit.windowMinutes());
-                return;
-            }
-        } else if (isBlogEndpoint(httpRequest)) {
-            String clientIp = getClientIp(httpRequest);
-            String rateLimitKey = buildRateLimitKey(clientIp, AppConstants.ENDPOINT_TYPE_BLOG);
-            if (isRateLimitExceeded(rateLimitKey, blogRateLimit)) {
-                LOGGER.warn("Rate limit exceeded for blog endpoint - IP: {} - Path: {}",
-                        clientIp, httpRequest.getRequestURI());
-                sendRateLimitExceededResponse(httpResponse, blogRateLimit.windowMinutes());
-                return;
+        String clientIp = getClientIp(httpRequest);
+        for (EndpointRule rule : rules) {
+            if (rule.matcher().test(httpRequest)) {
+                String rateLimitKey = buildRateLimitKey(clientIp, rule.endpointType());
+                if (isRateLimitExceeded(rateLimitKey, rule.config())) {
+                    LOGGER.warn("Rate limit exceeded for {} endpoint - IP: {} - Path: {}",
+                            rule.endpointType(), clientIp, httpRequest.getRequestURI());
+                    sendRateLimitExceededResponse(httpResponse, rule.config().windowMinutes());
+                    return;
+                }
+                break; // at most one rule matches per request
             }
         }
         try {
@@ -167,15 +124,11 @@ public class RateLimitFilter implements Filter {
      */
     private boolean isBlogAskEndpoint(HttpServletRequest request) {
         String method = request.getMethod();
-        if (!AppConstants.POST_METHOD.equalsIgnoreCase(method)
-                && !HttpMethod.GET.matches(method)) {
+        if (!AppConstants.POST_METHOD.equalsIgnoreCase(method) && !HttpMethod.GET.matches(method)) {
             return false;
         }
         String servletPath = request.getServletPath();
-        if (servletPath == null) {
-            return false;
-        }
-        if (!servletPath.startsWith("/blogs/published/")) {
+        if (servletPath == null || !servletPath.startsWith("/blogs/published/")) {
             return false;
         }
         return servletPath.endsWith("/ask") || servletPath.endsWith("/ask/stream");
@@ -189,10 +142,7 @@ public class RateLimitFilter implements Filter {
      */
     private boolean isBlogEndpoint(HttpServletRequest request) {
         String servletPath = request.getServletPath();
-        if (servletPath == null) {
-            return false;
-        }
-        return AppConstants.PUBLIC_BLOG_PATHS.stream().anyMatch(servletPath::startsWith);
+        return servletPath != null && AppConstants.PUBLIC_BLOG_PATHS.stream().anyMatch(servletPath::startsWith);
     }
 
     /**
@@ -206,10 +156,8 @@ public class RateLimitFilter implements Filter {
             return false;
         }
         String servletPath = request.getServletPath();
-        if (servletPath == null) {
-            return false;
-        }
-        return servletPath.equals("/ai/chat") || servletPath.equals("/ai/chat/");
+        return servletPath != null &&
+                (servletPath.equals(AppConstants.AI_CHAT_PATH) || servletPath.equals(AppConstants.AI_CHAT_PATH + "/"));
     }
 
     /**
@@ -229,11 +177,7 @@ public class RateLimitFilter implements Filter {
                 clientIp = xForwardedFor.split(",")[0].trim();
             } else {
                 String xRealIp = request.getHeader("X-Real-IP");
-                if (xRealIp != null && !xRealIp.trim().isEmpty()) {
-                    clientIp = xRealIp.trim();
-                } else {
-                    clientIp = request.getRemoteAddr();
-                }
+                clientIp = (xRealIp != null && !xRealIp.trim().isEmpty()) ? xRealIp.trim() : request.getRemoteAddr();
             }
         }
         // Normalize IP address to prevent key duplication (trim and lowercase)
@@ -298,13 +242,11 @@ public class RateLimitFilter implements Filter {
     }
 
     /**
-     * Cleans up expired entries from the request cache.
-     * Removes requests older than the longest configured time window plus a 1-minute buffer.
+     * Cleans up expired entries from the request cache called by the scheduled cleanup service.
      */
     public void cleanupExpiredEntries() {
         long currentTime = Instant.now().toEpochMilli();
-        long maxWindow = getMaxWindowMinutes();
-        long windowStart = currentTime - ((maxWindow + 1) * 60_000L);
+        long windowStart = currentTime - ((getMaxWindowMinutes() + 1) * 60_000L);
         int beforeSize = requestCache.size();
         requestCache.entrySet().removeIf(entry -> {
             RequestWindow window = entry.getValue();
@@ -326,14 +268,8 @@ public class RateLimitFilter implements Filter {
      * @return the maximum window duration in minutes
      */
     private long getMaxWindowMinutes() {
-        return java.util.stream.Stream.of(
-                        contactRateLimit,
-                        contactPolishRateLimit,
-                        blogRateLimit,
-                        blogAskRateLimit,
-                        portfolioChatRateLimit
-                )
-                .mapToLong(RateLimitConfig::windowMinutes)
+        return rules.stream()
+                .mapToLong(r -> r.config().windowMinutes())
                 .max()
                 .orElse(0L);
     }
@@ -362,6 +298,13 @@ public class RateLimitFilter implements Filter {
     }
 
     private record RateLimitConfig(int maxRequests, int windowMinutes) {
+    }
+
+    /**
+     * Associates an endpoint-matching predicate with its rate-limit configuration and key name.
+     * Add a new instance in the constructor to rate-limit an additional endpoint.
+     */
+    private record EndpointRule(Predicate<HttpServletRequest> matcher, String endpointType, RateLimitConfig config) {
     }
 
 }

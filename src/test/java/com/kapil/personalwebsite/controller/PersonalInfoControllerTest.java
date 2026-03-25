@@ -1,5 +1,6 @@
 package com.kapil.personalwebsite.controller;
 
+import com.kapil.personalwebsite.ai.vector.PortfolioVectorIndexService;
 import com.kapil.personalwebsite.dto.ApiResponse;
 import com.kapil.personalwebsite.entity.PersonalInfo;
 import com.kapil.personalwebsite.service.PersonalInfoService;
@@ -8,6 +9,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.HttpStatus;
 
 import java.time.LocalDateTime;
@@ -22,6 +24,9 @@ class PersonalInfoControllerTest {
 
     @Mock
     private PersonalInfoService personalInfoService;
+
+    @Mock
+    private ObjectProvider<PortfolioVectorIndexService> portfolioVectorIndexService;
 
     @InjectMocks
     private PersonalInfoController personalInfoController;

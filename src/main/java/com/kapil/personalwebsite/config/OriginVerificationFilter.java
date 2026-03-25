@@ -267,7 +267,7 @@ public class OriginVerificationFilter implements Filter {
      * @return true if the API key is valid and configured, false otherwise
      */
     private boolean isValidApiKey(String apiKey) {
-        return StringUtils.hasText(apiKey) && !"null".equals(apiKey);
+        return SecurityStringUtils.isConfigured(apiKey);
     }
 
 }

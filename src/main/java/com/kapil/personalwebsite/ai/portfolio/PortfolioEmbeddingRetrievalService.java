@@ -5,20 +5,21 @@ import org.springframework.ai.document.Document;
 import java.util.List;
 
 /**
- * Service that uses embeddings to retrieve the most relevant portfolio documents for a given visitor question.
- * This enables semantic retrieval without having to manually craft filters per entity type.
+ * Service for retrieving relevant portfolio documents based on a query.
  *
  * @author Kapil Garg
  */
 public interface PortfolioEmbeddingRetrievalService {
 
     /**
-     * Finds the most relevant portfolio documents for the given query using embeddings-based similarity.
+     * Finds the most relevant documents for the given query.
+     * If a project ID is provided, it will prioritize documents related to that project plus personal info.
      *
-     * @param query the visitor's question
-     * @param topK  maximum number of documents to return
-     * @return a list of relevant documents sorted by descending similarity
+     * @param query     the query to search for
+     * @param topK      the number of documents to return
+     * @param projectId the project ID to prioritize, if provided
+     * @return the list of relevant documents
      */
-    List<Document> findRelevantDocuments(String query, int topK);
+    List<Document> findRelevantDocuments(String query, int topK, String projectId);
 
 }

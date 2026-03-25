@@ -1,30 +1,16 @@
 package com.kapil.personalwebsite.ai.portfolio;
 
-import org.springframework.ai.document.Document;
-
-import java.util.List;
-
 /**
- * Service responsible for building RAG-friendly views of portfolio data.
- * This centralizes portfolio-specific formatting so chat services focus only on prompt construction.
+ * Service responsible for building a concise summary of the portfolio context to be used in RAG-first prompting.
+ * Aggregates key information from the portfolio and distills it into a summary for vector-retrieved documents.
  *
  * @author Kapil Garg
  */
 public interface PortfolioRagService {
 
     /**
-     * Builds a concise, human-readable context string summarizing the portfolio.
-     * This is intended for direct inclusion in a chat prompt without a vector store.
-     *
-     * @return a formatted text context describing personal info truncated to a safe maximum length
+     * Short prompt context so vector-retrieved documents carry most detail (RAG-first prompting).
      */
-    String buildPortfolioContext();
-
-    /**
-     * Builds a collection of documents representing portfolio entities for use in RAG pipelines.
-     *
-     * @return a list of documents, one per logical portfolio item
-     */
-    List<Document> buildPortfolioDocuments();
+    String buildPortfolioContextSummary();
 
 }

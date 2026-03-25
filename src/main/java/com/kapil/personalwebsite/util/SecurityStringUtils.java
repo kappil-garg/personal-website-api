@@ -106,6 +106,17 @@ public final class SecurityStringUtils {
     }
 
     /**
+     * Checks if a configuration value is present and usable.
+     * Considers a value unusable if it is null, empty, whitespace-only, or the string "null" (case-insensitive).
+     *
+     * @param value the string to check
+     * @return true if the value is present and usable
+     */
+    public static boolean isConfigured(String value) {
+        return isNotBlank(value) && !"null".equalsIgnoreCase(value);
+    }
+
+    /**
      * Constant-time string comparison to prevent timing attacks for API key validation.
      *
      * @param a first string

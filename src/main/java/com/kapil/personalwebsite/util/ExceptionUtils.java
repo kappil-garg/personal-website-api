@@ -14,6 +14,11 @@ import java.io.IOException;
  */
 public final class ExceptionUtils {
 
+    private static final String BROKEN_PIPE = "broken pipe";
+    private static final String CLIENT_ABORT = "clientabort";
+    private static final String CONNECTION_RESET = "connection reset";
+    private static final String CONNECTION_ABORTED = "connection aborted";
+
     private ExceptionUtils() {
         throw new UnsupportedOperationException(AppConstants.UTILITY_CLASS_INSTANTIATION_MSG);
     }
@@ -41,10 +46,10 @@ public final class ExceptionUtils {
             return false;
         }
         String lowerMessage = message.toLowerCase();
-        return lowerMessage.contains(AppConstants.BROKEN_PIPE) ||
-                lowerMessage.contains(AppConstants.CLIENT_ABORT) ||
-                lowerMessage.contains(AppConstants.CONNECTION_RESET) ||
-                lowerMessage.contains(AppConstants.CONNECTION_ABORTED);
+        return lowerMessage.contains(BROKEN_PIPE) ||
+                lowerMessage.contains(CLIENT_ABORT) ||
+                lowerMessage.contains(CONNECTION_RESET) ||
+                lowerMessage.contains(CONNECTION_ABORTED);
     }
 
     /**
@@ -64,12 +69,8 @@ public final class ExceptionUtils {
             }
             return;
         }
-        if (e instanceof IOException) {
-            throw (IOException) e;
-        }
-        if (e instanceof ServletException) {
-            throw (ServletException) e;
-        }
+        if (e instanceof IOException ioe) throw ioe;
+        if (e instanceof ServletException se) throw se;
     }
 
 }

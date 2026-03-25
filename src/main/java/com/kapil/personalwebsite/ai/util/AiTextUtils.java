@@ -2,8 +2,7 @@ package com.kapil.personalwebsite.ai.util;
 
 import com.kapil.personalwebsite.util.AppConstants;
 
-import java.util.List;
-import java.util.function.BiConsumer;
+import java.util.regex.Pattern;
 
 /**
  * Utility methods for building AI-friendly text sections from domain data.
@@ -13,8 +12,24 @@ import java.util.function.BiConsumer;
  */
 public final class AiTextUtils {
 
+    private static final Pattern HTML_TAG = Pattern.compile("<[^>]+>");
+
     private AiTextUtils() {
         throw new UnsupportedOperationException(AppConstants.UTILITY_CLASS_INSTANTIATION_MSG);
+    }
+
+    /**
+     * Strips HTML tags and collapses whitespace (for blog bodies and rich text fields).
+     *
+     * @param html the HTML string to strip
+     * @return the stripped string
+     */
+    public static String stripHtmlTags(String html) {
+        if (html == null || html.isBlank()) {
+            return "";
+        }
+        String text = HTML_TAG.matcher(html).replaceAll(" ");
+        return text.replaceAll("\\s+", " ").trim();
     }
 
     /**
@@ -25,29 +40,6 @@ public final class AiTextUtils {
      */
     public static String nullSafe(String value) {
         return value != null ? value : "";
-    }
-
-    /**
-     * Appends a titled section made of list items to the provided StringBuilder.
-     * Each item is formatted using the given lineAppender.
-     *
-     * @param sb           the StringBuilder to append to
-     * @param title        the section title
-     * @param items        the list of items
-     * @param lineAppender a function that appends a single item's content to the builder
-     * @param <T>          the item type
-     */
-    public static <T> void appendSection(StringBuilder sb, String title, List<T> items,
-                                         BiConsumer<StringBuilder, T> lineAppender) {
-        if (items == null || items.isEmpty()) {
-            return;
-        }
-        sb.append(title).append(":\n");
-        items.forEach(item -> {
-            lineAppender.accept(sb, item);
-            sb.append("\n");
-        });
-        sb.append("\n");
     }
 
 }
