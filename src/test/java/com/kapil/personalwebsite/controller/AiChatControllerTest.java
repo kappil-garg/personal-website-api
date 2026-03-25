@@ -52,7 +52,7 @@ class AiChatControllerTest {
     @DisplayName("POST /ai/chat returns 200 and reply when service returns response")
     void chat_ValidRequest_ReturnsOkAndReply() throws Exception {
         String userMessage = "What are Kapil's key skills?";
-        PortfolioChatRequest request = new PortfolioChatRequest(userMessage);
+        PortfolioChatRequest request = new PortfolioChatRequest(userMessage, null);
         PortfolioChatResponse responseData = new PortfolioChatResponse("Kapil has experience in Java, Spring, Angular, and cloud technologies.");
         when(portfolioChatService.chat(any(PortfolioChatRequest.class))).thenReturn(responseData);
         mockMvc.perform(post("/ai/chat")
@@ -68,7 +68,7 @@ class AiChatControllerTest {
     @Test
     @DisplayName("POST /ai/chat with empty message is rejected by validation")
     void chat_EmptyMessage_ReturnsBadRequest() throws Exception {
-        PortfolioChatRequest request = new PortfolioChatRequest("   ");
+        PortfolioChatRequest request = new PortfolioChatRequest("   ", null);
         mockMvc.perform(post("/ai/chat")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(OBJECT_MAPPER.writeValueAsString(request)))
@@ -89,7 +89,7 @@ class AiChatControllerTest {
     @DisplayName("POST /ai/chat with message over 500 characters is rejected by validation")
     void chat_MessageTooLong_ReturnsBadRequest() throws Exception {
         String longMessage = "a".repeat(501);
-        PortfolioChatRequest request = new PortfolioChatRequest(longMessage);
+        PortfolioChatRequest request = new PortfolioChatRequest(longMessage, null);
         mockMvc.perform(post("/ai/chat")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(OBJECT_MAPPER.writeValueAsString(request)))

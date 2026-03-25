@@ -1,5 +1,6 @@
 package com.kapil.personalwebsite.controller;
 
+import com.kapil.personalwebsite.ai.vector.PortfolioVectorIndexService;
 import com.kapil.personalwebsite.dto.ApiResponse;
 import com.kapil.personalwebsite.entity.PersonalInfo;
 import com.kapil.personalwebsite.service.PersonalInfoService;
@@ -7,6 +8,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -27,6 +29,7 @@ public class PersonalInfoController {
     private static final Logger LOGGER = LoggerFactory.getLogger(PersonalInfoController.class);
 
     private final PersonalInfoService personalInfoService;
+    private final ObjectProvider<PortfolioVectorIndexService> portfolioVectorIndexService;
 
     /**
      * Retrieves the personal information/portfolio (public access).
@@ -62,6 +65,13 @@ public class PersonalInfoController {
     public ResponseEntity<ApiResponse<PersonalInfo>> updatePersonalInfo(@Valid @RequestBody PersonalInfo personalInfo) {
         LOGGER.info("PUT /portfolio - Updating personal information (admin)");
         PersonalInfo updatedInfo = personalInfoService.updatePersonalInfo(personalInfo);
+        portfolioVectorIndexService.ifAvailable(svc -> {
+            try {
+                svc.rebuildIndex();
+            } catch (Exception ex) {
+                LOGGER.warn("Portfolio vector reindex after personal info update failed: {}", ex.getMessage());
+            }
+        });
         ApiResponse<PersonalInfo> response = ApiResponse.success(
                 updatedInfo,
                 "Personal information updated successfully"

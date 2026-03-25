@@ -26,11 +26,6 @@ public final class AppConstants {
     public static final String CONTENT_TYPE_HEADER = "Content-Type";
     public static final String AUTHORIZATION_HEADER = "Authorization";
 
-    public static final String BROKEN_PIPE = "broken pipe";
-    public static final String CLIENT_ABORT = "clientabort";
-    public static final String CONNECTION_RESET = "connection reset";
-    public static final String CONNECTION_ABORTED = "connection aborted";
-
     public static final String EMAIL_NOT_CONFIGURED = "Email service not configured";
     public static final String SENDER_EMAIL_NOT_CONFIGURED = "Sender email not configured";
     public static final String RECIPIENT_EMAIL_NOT_CONFIGURED = "Recipient email not configured";
@@ -48,6 +43,7 @@ public final class AppConstants {
 
     public static final String IPV6_LOCALHOST = "0:0:0:0:0:0:0:1";
     public static final String CONTACT_POLISH_PATH = "/contact/polish";
+    public static final String AI_CHAT_PATH = "/ai/chat";
 
     /**
      * Paths that are excluded from origin verification.

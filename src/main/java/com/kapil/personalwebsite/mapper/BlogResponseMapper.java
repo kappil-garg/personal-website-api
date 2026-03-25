@@ -35,4 +35,27 @@ public class BlogResponseMapper {
         }
     }
 
+    /**
+     * Builds a blog response entity for an ID-based lookup.
+     *
+     * @param id   the ID that was looked up
+     * @param blog the blog entity, or {@code null} if not found
+     * @return the blog response entity
+     */
+    public static ResponseEntity<ApiResponse<Blog>> buildBlogByIdResponse(String id, Blog blog) {
+        if (blog != null) {
+            ApiResponse<Blog> response = ApiResponse.success(
+                    blog,
+                    String.format("Blog with ID '%s' retrieved successfully", id)
+            );
+            return ResponseEntity.ok(response);
+        } else {
+            ApiResponse<Blog> response = ApiResponse.error(
+                    String.format("Blog with ID '%s' not found", id),
+                    HttpStatus.NOT_FOUND.value()
+            );
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+        }
+    }
+
 }

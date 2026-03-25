@@ -106,6 +106,16 @@ public final class SecurityStringUtils {
     }
 
     /**
+     * Checks if a string is configured, meaning it is not blank and not the literal string "null".
+     *
+     * @param value the string to check
+     * @return true if the value is present and usable
+     */
+    public static boolean isConfigured(String value) {
+        return isNotBlank(value) && !"null".equals(value);
+    }
+
+    /**
      * Constant-time string comparison to prevent timing attacks for API key validation.
      *
      * @param a first string

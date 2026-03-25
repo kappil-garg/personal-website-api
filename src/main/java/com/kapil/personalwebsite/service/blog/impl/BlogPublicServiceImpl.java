@@ -36,7 +36,7 @@ public class BlogPublicServiceImpl implements BlogPublicService {
      */
     @Override
     public List<Blog> getPublishedBlogs() {
-        LOGGER.info("Fetching all published blogs for public access");
+        LOGGER.debug("Fetching all published blogs for public access");
         return blogRepository.findByStatusAndIsActiveTrueOrderByPublishedAtDesc(BlogStatus.PUBLISHED);
     }
 
@@ -48,7 +48,7 @@ public class BlogPublicServiceImpl implements BlogPublicService {
      */
     @Override
     public Optional<Blog> getPublishedBlogBySlug(String slug) {
-        LOGGER.info("Fetching published blog by slug: {}", slug);
+        LOGGER.debug("Fetching published blog by slug: {}", slug);
         return blogRepository.findBySlugAndStatusAndIsActiveTrue(slug, BlogStatus.PUBLISHED);
     }
 
@@ -60,7 +60,7 @@ public class BlogPublicServiceImpl implements BlogPublicService {
      */
     @Override
     public Optional<Blog> getPublishedBlogById(String id) {
-        LOGGER.info("Fetching published blog by ID: {}", id);
+        LOGGER.debug("Fetching published blog by ID: {}", id);
         return blogRepository.findByIdAndStatusAndIsActiveTrue(id, BlogStatus.PUBLISHED);
     }
 
@@ -72,7 +72,7 @@ public class BlogPublicServiceImpl implements BlogPublicService {
      */
     @Override
     public List<Blog> getPublishedBlogsByCategory(BlogCategory category) {
-        LOGGER.info("Fetching published blogs by category: {}", category);
+        LOGGER.debug("Fetching published blogs by category: {}", category);
         return blogRepository.findByCategoryAndStatusOrderByPublishedAtDesc(category, BlogStatus.PUBLISHED);
     }
 

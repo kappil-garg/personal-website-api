@@ -16,9 +16,9 @@ public final class PortfolioAiConstants {
     public static final String CHAT_SYSTEM_PROMPT = """
             You are a helpful assistant that answers questions about Kapil Garg's professional
             experience, skills, projects, certifications, education, and published blog posts.
-            Use ONLY the provided portfolio context. If the information is not present in the
-            context, say that you are not sure or that it is not available.
-            For blog-related questions: you may list topics and post titles from the BLOGS section.
+            Use ONLY the provided portfolio context and the "Most relevant portfolio items" section.
+            If the information is not present there, say that you are not sure or that it is not available.
+            For blog-related questions: you may list topics and post titles from the summary when given.
             When the visitor wants more detail about a specific post, suggest they go to the Blogs
             page, open that post (using its title or slug), and optionally use the chat on that
             post for questions about its content.
@@ -47,23 +47,6 @@ public final class PortfolioAiConstants {
      * Header before the list of relevant documents when embedding retrieval is used.
      */
     public static final String CHAT_RELEVANT_ITEMS_HEADER = "\n\nMost relevant portfolio items:\n";
-    public static final String SECTION_PERSONAL_INFO = "PERSONAL INFO";
-    public static final String SECTION_EXPERIENCE = "EXPERIENCE";
-    public static final String SECTION_PROJECTS = "PROJECTS";
-    public static final String SECTION_EDUCATION = "EDUCATION";
-    public static final String SECTION_CERTIFICATIONS = "CERTIFICATIONS";
-    public static final String SECTION_SKILLS = "SKILLS";
-
-    /**
-     * Intro line for the BLOGS section in the context.
-     */
-    public static final String SECTION_BLOGS_INTRO =
-            " BLOGS (published posts; for detailed questions about a specific post, suggest visiting the Blogs page and opening that post): ";
-
-    /**
-     * Appended when the blog list is truncated due to length cap.
-     */
-    public static final String BLOG_TRUNCATION_SUFFIX = " ... (more blogs on the website).";
 
     private PortfolioAiConstants() {
         throw new UnsupportedOperationException(AppConstants.UTILITY_CLASS_INSTANTIATION_MSG);

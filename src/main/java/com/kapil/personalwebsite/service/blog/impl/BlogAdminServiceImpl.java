@@ -1,5 +1,7 @@
 package com.kapil.personalwebsite.service.blog.impl;
 
+import com.kapil.personalwebsite.dto.blog.BlogCreateRequest;
+import com.kapil.personalwebsite.dto.blog.BlogUpdateRequest;
 import com.kapil.personalwebsite.entity.Blog;
 import com.kapil.personalwebsite.entity.BlogStatus;
 import com.kapil.personalwebsite.exception.BlogNotFoundException;
@@ -12,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -31,6 +34,20 @@ public class BlogAdminServiceImpl implements BlogAdminService {
     private final BlogRepository blogRepository;
 
     /**
+     * Calculates estimated reading time based on word count at 200 words per minute.
+     *
+     * @param content the blog content (maybe null or empty)
+     * @return reading time in minutes, minimum 1 for non-empty content
+     */
+    private static int calculateReadingTime(String content) {
+        if (content == null || content.isBlank()) {
+            return 0;
+        }
+        int wordCount = content.trim().split("\\s+").length;
+        return Math.max(1, (int) Math.ceil(wordCount / 200.0));
+    }
+
+    /**
      * Retrieves all blogs, including drafts and archived.
      *
      * @return a list of all blogs ordered by creation date (newest first)
@@ -38,7 +55,7 @@ public class BlogAdminServiceImpl implements BlogAdminService {
     @Override
     @Transactional(readOnly = true)
     public List<Blog> getAllBlogs() {
-        LOGGER.info("Fetching all blogs for admin access");
+        LOGGER.debug("Fetching all blogs for admin access");
         return blogRepository.findByIsActiveTrueOrderByCreatedAtDesc();
     }
 
@@ -51,7 +68,7 @@ public class BlogAdminServiceImpl implements BlogAdminService {
     @Override
     @Transactional(readOnly = true)
     public Optional<Blog> getBlogBySlug(String slug) {
-        LOGGER.info("Fetching blog by slug: {}", slug);
+        LOGGER.debug("Fetching blog by slug: {}", slug);
         return blogRepository.findBySlugAndIsActiveTrue(slug);
     }
 
@@ -64,42 +81,46 @@ public class BlogAdminServiceImpl implements BlogAdminService {
     @Override
     @Transactional(readOnly = true)
     public Optional<Blog> getBlogById(String id) {
-        LOGGER.info("Fetching blog by ID: {}", id);
+        LOGGER.debug("Fetching blog by ID: {}", id);
         return blogRepository.findByIdAndIsActiveTrue(id);
     }
 
     /**
-     * Creates a new blog.
+     * Creates a new blog from the supplied request DTO.
      *
-     * @param blog the blog to create
-     * @return the created blog
-     * @throws IllegalArgumentException if a blog with the same slug already exists
+     * @param request the creation request containing author-supplied fields
+     * @return the persisted blog
      */
     @Override
-    public Blog createBlog(Blog blog) {
-        LOGGER.info("Creating new blog: {}", blog.getTitle());
-        if (blogRepository.existsBySlug(blog.getSlug())) {
-            throw new BlogSlugAlreadyExistsException("Blog with slug '" + blog.getSlug() + "' already exists");
+    public Blog createBlog(BlogCreateRequest request) {
+        LOGGER.info("Creating new blog: {}", request.title());
+        if (blogRepository.existsBySlug(request.slug())) {
+            throw new BlogSlugAlreadyExistsException("Blog with slug '" + request.slug() + "' already exists");
         }
-        if (blog.getReadingTime() == null) {
-            blog.setReadingTime(blog.calculateReadingTime());
-        }
+        Blog blog = new Blog();
+        blog.setTitle(request.title());
+        blog.setContent(request.content());
+        blog.setSlug(request.slug());
+        blog.setExcerpt(request.excerpt());
+        blog.setFeaturedImage(request.featuredImage());
+        blog.setCategory(request.category());
+        blog.setReadingTime(calculateReadingTime(request.content()));
         return blogRepository.save(blog);
     }
 
     /**
-     * Updates an existing blog.
+     * Updates an existing blog from the supplied request DTO.
      *
-     * @param id          the ID of the blog to update
-     * @param blogDetails the updated blog details
-     * @return an Optional containing the updated blog if found, or empty if not found
+     * @param id      the ID of the blog to update
+     * @param request the update request containing the new field values
+     * @return the updated blog
      */
     @Override
-    public Blog updateBlog(String id, Blog blogDetails) {
+    public Blog updateBlog(String id, BlogUpdateRequest request) {
         LOGGER.info("Updating blog: {}", id);
         return blogRepository.findByIdAndIsActiveTrue(id)
                 .map(existingBlog -> {
-                    updateBlogFields(existingBlog, blogDetails);
+                    applyUpdateRequest(existingBlog, request);
                     return blogRepository.save(existingBlog);
                 })
                 .orElseThrow(() -> new BlogNotFoundException("Blog with ID '" + id + "' not found"));
@@ -130,7 +151,8 @@ public class BlogAdminServiceImpl implements BlogAdminService {
         LOGGER.info("Publishing blog: {}", id);
         Blog blog = blogRepository.findByIdAndIsActiveTrue(id)
                 .orElseThrow(() -> new BlogNotFoundException("Blog with ID '" + id + "' not found"));
-        blog.publish();
+        blog.setStatus(BlogStatus.PUBLISHED);
+        blog.setPublishedAt(LocalDateTime.now());
         return blogRepository.save(blog);
     }
 
@@ -151,22 +173,24 @@ public class BlogAdminServiceImpl implements BlogAdminService {
     }
 
     /**
-     * Updates the fields of an existing blog with the provided details.
+     * Applies the fields from a BlogUpdateRequest to an existing Blog entity, mutating it in place.
+     * Only updates the reading time if the content has changed or if a new reading time is explicitly provided.
      *
-     * @param existingBlog the existing blog to update
-     * @param blogDetails  the new blog details
+     * @param existingBlog the blog entity to mutate
+     * @param request      the incoming update request
      */
-    private void updateBlogFields(Blog existingBlog, Blog blogDetails) {
-        existingBlog.setTitle(blogDetails.getTitle());
-        existingBlog.setContent(blogDetails.getContent());
-        existingBlog.setSlug(blogDetails.getSlug());
-        existingBlog.setExcerpt(blogDetails.getExcerpt());
-        existingBlog.setFeaturedImage(blogDetails.getFeaturedImage());
-        existingBlog.setCategory(blogDetails.getCategory());
-        if (blogDetails.getContent() != null && !blogDetails.getContent().equals(existingBlog.getContent())) {
-            existingBlog.setReadingTime(existingBlog.calculateReadingTime());
-        } else if (blogDetails.getReadingTime() != null) {
-            existingBlog.setReadingTime(blogDetails.getReadingTime());
+    private void applyUpdateRequest(Blog existingBlog, BlogUpdateRequest request) {
+        String previousContent = existingBlog.getContent();
+        existingBlog.setTitle(request.title());
+        existingBlog.setContent(request.content());
+        existingBlog.setSlug(request.slug());
+        existingBlog.setExcerpt(request.excerpt());
+        existingBlog.setFeaturedImage(request.featuredImage());
+        existingBlog.setCategory(request.category());
+        if (request.content() != null && !request.content().equals(previousContent)) {
+            existingBlog.setReadingTime(calculateReadingTime(request.content()));
+        } else if (request.readingTime() != null) {
+            existingBlog.setReadingTime(request.readingTime());
         }
     }
 

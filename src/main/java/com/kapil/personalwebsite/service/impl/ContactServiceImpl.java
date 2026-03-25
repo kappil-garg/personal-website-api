@@ -102,7 +102,7 @@ public class ContactServiceImpl implements ContactService {
      * @return true if the email is configured, false otherwise
      */
     private boolean isConfiguredEmail(String email) {
-        return SecurityStringUtils.isNotBlank(email) && !"null".equals(email);
+        return SecurityStringUtils.isConfigured(email);
     }
 
     /**

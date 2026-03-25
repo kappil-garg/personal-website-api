@@ -1,5 +1,6 @@
 package com.kapil.personalwebsite.controller;
 
+import com.kapil.personalwebsite.ai.vector.PortfolioVectorIndexService;
 import com.kapil.personalwebsite.entity.Blog;
 import com.kapil.personalwebsite.service.blog.BlogAdminService;
 import org.junit.jupiter.api.Test;
@@ -7,6 +8,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.HttpStatus;
 
 import java.util.Arrays;
@@ -21,6 +23,9 @@ class BlogControllerTest {
 
     @Mock
     private BlogAdminService blogAdminService;
+
+    @Mock
+    private ObjectProvider<PortfolioVectorIndexService> portfolioVectorIndexService;
 
     @InjectMocks
     private BlogController blogController;

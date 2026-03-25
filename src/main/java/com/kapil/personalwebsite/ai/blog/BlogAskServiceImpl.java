@@ -2,6 +2,7 @@ package com.kapil.personalwebsite.ai.blog;
 
 import com.kapil.personalwebsite.ai.dto.BlogAskRequest;
 import com.kapil.personalwebsite.ai.dto.BlogAskResponse;
+import com.kapil.personalwebsite.ai.util.AiTextUtils;
 import com.kapil.personalwebsite.ai.util.BlogAiConstants;
 import com.kapil.personalwebsite.entity.Blog;
 import com.kapil.personalwebsite.service.blog.BlogPublicService;
@@ -10,7 +11,6 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
 import java.util.Optional;
-import java.util.regex.Pattern;
 
 /**
  * Implementation of BlogAskService using Spring AI ChatClient with blog content as context (simple RAG).
@@ -21,7 +21,6 @@ import java.util.regex.Pattern;
 public class BlogAskServiceImpl implements BlogAskService {
 
     private static final int MAX_CONTEXT_LENGTH = 12_000;
-    private static final Pattern HTML_TAG = Pattern.compile("<[^>]+>");
 
     private final BlogPublicService blogPublicService;
     private final ChatClient chatClient;
@@ -78,9 +77,7 @@ public class BlogAskServiceImpl implements BlogAskService {
      * @return a cleaned and truncated text context for AI input
      */
     private String buildContext(Blog blog) {
-        String raw = blog.getContent() != null ? blog.getContent() : "";
-        String text = HTML_TAG.matcher(raw).replaceAll(" ");
-        text = text.replaceAll("\\s+", " ").trim();
+        String text = AiTextUtils.stripHtmlTags(blog.getContent() != null ? blog.getContent() : "");
         if (text.length() > MAX_CONTEXT_LENGTH) {
             text = text.substring(0, MAX_CONTEXT_LENGTH) + "...";
         }

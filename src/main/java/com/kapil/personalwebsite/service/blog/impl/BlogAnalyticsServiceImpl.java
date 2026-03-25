@@ -34,10 +34,10 @@ public class BlogAnalyticsServiceImpl implements BlogAnalyticsService {
      */
     @Override
     public Optional<Blog> incrementViewCount(String id) {
-        LOGGER.info("Incrementing view count for blog: {}", id);
+        LOGGER.debug("Incrementing view count for blog: {}", id);
         return blogRepository.findByIdAndIsActiveTrue(id)
                 .map(blog -> {
-                    blog.incrementViewCount();
+                    blog.setViewCount(blog.getViewCount() != null ? blog.getViewCount() + 1 : 1L);
                     return blogRepository.save(blog);
                 });
     }
@@ -51,7 +51,7 @@ public class BlogAnalyticsServiceImpl implements BlogAnalyticsService {
     @Override
     @Transactional(readOnly = true)
     public Optional<Blog> getViewCount(String id) {
-        LOGGER.info("Getting view count for blog: {}", id);
+        LOGGER.debug("Getting view count for blog: {}", id);
         return blogRepository.findByIdAndIsActiveTrue(id);
     }
 
