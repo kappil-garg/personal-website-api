@@ -51,8 +51,13 @@ class RateLimitFilterTest {
     }
 
     private RateLimitFilter buildFilter(int maxRequests, int windowMinutes) {
-        RateLimitProperties.EndpointLimitConfig cfg =
-                new RateLimitProperties.EndpointLimitConfig(maxRequests, windowMinutes);
+        return buildFilter(maxRequests, windowMinutes, maxRequests * 10, windowMinutes);
+    }
+
+    private RateLimitFilter buildFilter(int fpMax, int fpWindow, int ipMax, int ipWindow) {
+        var fp = new RateLimitProperties.EndpointLimitConfig.BucketConfig(fpMax, fpWindow);
+        var ip = new RateLimitProperties.EndpointLimitConfig.BucketConfig(ipMax, ipWindow);
+        var cfg = new RateLimitProperties.EndpointLimitConfig(fp, ip);
         RateLimitProperties properties = new RateLimitProperties(cfg, cfg, cfg, cfg, cfg, false);
         return new RateLimitFilter(properties);
     }
@@ -174,6 +179,49 @@ class RateLimitFilterTest {
             filter.doFilter(request, response, filterChain);
             verify(filterChain).doFilter(request, response);
             verifyNoInteractions(response);
+        }
+
+        @Test
+        @DisplayName("IP aggregate bucket blocks header-rotating abuser even when each fingerprint bucket is fresh")
+        void ipAggregateBucket_blocksHeaderRotation() throws Exception {
+            // fp=1/60min per fingerprint bucket, ip=2/60min shared across all fingerprints from this IP
+            filter = buildFilter(1, 60, 2, 60);
+            // Request 1 — UA-A fills fp_A (1/1) and consumes IP slot 1/2
+            stubContactPost("Chrome/120");
+            filter.doFilter(request, response, filterChain);
+            // Request 2 — UA-B fills fp_B (1/1) and consumes IP slot 2/2
+            reset(request);
+            stubContactPost("Firefox/121");
+            filter.doFilter(request, response, filterChain);
+            verify(filterChain, times(2)).doFilter(any(), any());
+            // Request 3 — UA-C has a fresh fingerprint bucket but the IP aggregate is exhausted → 429
+            reset(request);
+            reset(filterChain);
+            stubContactPost("Safari/17");
+            filter.doFilter(request, response, filterChain);
+            verify(filterChain, never()).doFilter(any(), any());
+            verify(response).setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
+        }
+
+        @Test
+        @DisplayName("X-RateLimit-* headers reflect fingerprint bucket limits when IP aggregate blocks")
+        void headersReflectFingerprintBucket_whenIpAggregateBlocks() throws Exception {
+            // fp=5/60min, ip=2/60min — IP aggregate exhausted after 2 requests
+            filter = buildFilter(5, 60, 2, 60);
+            stubContactPost("Chrome/120");
+            filter.doFilter(request, response, filterChain);
+            reset(request);
+            stubContactPost("Firefox/121");
+            filter.doFilter(request, response, filterChain);
+            // 3rd request from a new UA — fp bucket is fresh but IP is exhausted
+            reset(request);
+            reset(response);
+            when(response.getWriter()).thenReturn(new PrintWriter(new StringWriter()));
+            stubContactPost("Safari/17");
+            filter.doFilter(request, response, filterChain);
+            verify(response).setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
+            // X-RateLimit-Limit must reflect the fingerprint config (5), not the IP config (2)
+            verify(response).setHeader(eq(AppConstants.X_RATE_LIMIT_LIMIT), eq("5"));
         }
 
     }
