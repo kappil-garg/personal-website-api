@@ -23,8 +23,13 @@ public final class AppConstants {
     public static final String OPTIONS_METHOD = "OPTIONS";
     public static final String API_KEY_HEADER = "X-API-Key";
     public static final String USER_AGENT_HEADER = "User-Agent";
+    public static final String ACCEPT_LANGUAGE_HEADER = "Accept-Language";
     public static final String CONTENT_TYPE_HEADER = "Content-Type";
     public static final String AUTHORIZATION_HEADER = "Authorization";
+
+    public static final String X_RATE_LIMIT_LIMIT = "X-RateLimit-Limit";
+    public static final String X_RATE_LIMIT_REMAINING = "X-RateLimit-Remaining";
+    public static final String X_RATE_LIMIT_RESET = "X-RateLimit-Reset";
 
     public static final String EMAIL_NOT_CONFIGURED = "Email service not configured";
     public static final String SENDER_EMAIL_NOT_CONFIGURED = "Sender email not configured";

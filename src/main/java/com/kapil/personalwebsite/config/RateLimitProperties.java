@@ -18,12 +18,19 @@ public record RateLimitProperties(
 ) {
 
     /**
-     * Per-endpoint sliding-window rate-limit settings.
-     *
-     * @param maxRequests   maximum number of requests allowed within the window
-     * @param windowMinutes duration of the sliding window in minutes
+     * Per-endpoint rate-limit settings split into two independent buckets.
      */
-    public record EndpointLimitConfig(int maxRequests, int windowMinutes) {
+    public record EndpointLimitConfig(BucketConfig fingerprint, BucketConfig ip) {
+
+        /**
+         * Sliding-window thresholds for a single rate-limit bucket.
+         *
+         * @param maxRequests   maximum requests allowed within the window
+         * @param windowMinutes duration of the sliding window in minutes
+         */
+        public record BucketConfig(int maxRequests, int windowMinutes) {
+        }
+
     }
 
 }

@@ -15,16 +15,18 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.Predicate;
 
 /**
  * Rate limiting filter for contact form, blog, and AI endpoints to prevent spam and abuse.
- * Uses a sliding window algorithm with per-IP address tracking.
+ * Implements a dual-bucket sliding window algorithm with separate limits for client fingerprint and IP aggregate.
  *
  * @author Kapil Garg
  */
@@ -34,6 +36,21 @@ public class RateLimitFilter implements Filter {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RateLimitFilter.class);
 
+    private static final String BUCKET_FP = "fp";
+    private static final String BUCKET_IP = "ip";
+
+    /**
+     * One SHA-256 digest per request-handling thread to avoid allocating a new MessageDigest on every request.
+     */
+    private static final ThreadLocal<Optional<MessageDigest>> SHA256_DIGEST = ThreadLocal.withInitial(() -> {
+        try {
+            return Optional.of(MessageDigest.getInstance("SHA-256"));
+        } catch (NoSuchAlgorithmException e) {
+            LOGGER.error("SHA-256 unavailable, falling back to raw IP for rate limit key", e);
+            return Optional.empty();
+        }
+    });
+
     private final List<EndpointRule> rules;
     private final boolean trustProxyHeaders;
     private final Map<String, RequestWindow> requestCache = new ConcurrentHashMap<>();
@@ -41,11 +58,16 @@ public class RateLimitFilter implements Filter {
     public RateLimitFilter(RateLimitProperties properties) {
         this.trustProxyHeaders = properties.trustProxyHeaders();
         this.rules = List.of(
-                new EndpointRule(this::isContactPolishEndpoint, AppConstants.ENDPOINT_TYPE_CONTACT_POLISH, toConfig(properties.contactPolish())),
-                new EndpointRule(this::isContactEndpoint, AppConstants.ENDPOINT_TYPE_CONTACT, toConfig(properties.contact())),
-                new EndpointRule(this::isBlogAskEndpoint, AppConstants.ENDPOINT_TYPE_BLOG_ASK, toConfig(properties.blogAsk())),
-                new EndpointRule(this::isPortfolioChatEndpoint, AppConstants.ENDPOINT_TYPE_PORTFOLIO_CHAT, toConfig(properties.portfolioChat())),
-                new EndpointRule(this::isBlogEndpoint, AppConstants.ENDPOINT_TYPE_BLOG, toConfig(properties.blog()))
+                new EndpointRule(this::isContactPolishEndpoint, AppConstants.ENDPOINT_TYPE_CONTACT_POLISH,
+                        toConfig(properties.contactPolish().fingerprint()), toConfig(properties.contactPolish().ip())),
+                new EndpointRule(this::isContactEndpoint, AppConstants.ENDPOINT_TYPE_CONTACT,
+                        toConfig(properties.contact().fingerprint()), toConfig(properties.contact().ip())),
+                new EndpointRule(this::isBlogAskEndpoint, AppConstants.ENDPOINT_TYPE_BLOG_ASK,
+                        toConfig(properties.blogAsk().fingerprint()), toConfig(properties.blogAsk().ip())),
+                new EndpointRule(this::isPortfolioChatEndpoint, AppConstants.ENDPOINT_TYPE_PORTFOLIO_CHAT,
+                        toConfig(properties.portfolioChat().fingerprint()), toConfig(properties.portfolioChat().ip())),
+                new EndpointRule(this::isBlogEndpoint, AppConstants.ENDPOINT_TYPE_BLOG,
+                        toConfig(properties.blog().fingerprint()), toConfig(properties.blog().ip()))
         );
         if (trustProxyHeaders) {
             LOGGER.warn("Proxy header trust is enabled. Ensure your proxy/load balancer strips " +
@@ -53,7 +75,7 @@ public class RateLimitFilter implements Filter {
         }
     }
 
-    private static RateLimitConfig toConfig(RateLimitProperties.EndpointLimitConfig cfg) {
+    private static RateLimitConfig toConfig(RateLimitProperties.EndpointLimitConfig.BucketConfig cfg) {
         return new RateLimitConfig(cfg.maxRequests(), cfg.windowMinutes());
     }
 
@@ -69,11 +91,23 @@ public class RateLimitFilter implements Filter {
         String clientIp = getClientIp(httpRequest);
         for (EndpointRule rule : rules) {
             if (rule.matcher().test(httpRequest)) {
-                String rateLimitKey = buildRateLimitKey(clientIp, rule.endpointType());
-                if (isRateLimitExceeded(rateLimitKey, rule.config())) {
-                    LOGGER.warn("Rate limit exceeded for {} endpoint - IP: {} - Path: {}",
+                String fingerprint = buildClientFingerprint(clientIp, httpRequest);
+                String fpKey = buildRateLimitKey(BUCKET_FP, fingerprint, rule.endpointType());
+                String ipKey = buildRateLimitKey(BUCKET_IP, clientIp, rule.endpointType());
+                RateLimitCheckResult fpResult = checkRateLimit(fpKey, rule.fingerprintConfig());
+                RateLimitCheckResult ipResult = checkRateLimit(ipKey, rule.ipConfig());
+                // Headers always reflect the fingerprint bucket so clients see their own quota.
+                setRateLimitHeaders(httpResponse, rule.fingerprintConfig().maxRequests(),
+                        fpResult.remaining(), fpResult.resetEpochSeconds());
+                if (!fpResult.allowed() || !ipResult.allowed()) {
+                    boolean ipBlocked = fpResult.allowed();
+                    int retryWindowMinutes = ipBlocked
+                            ? rule.ipConfig().windowMinutes()
+                            : rule.fingerprintConfig().windowMinutes();
+                    LOGGER.warn("Rate limit exceeded ({}) for {} endpoint - IP: {} - Path: {}",
+                            ipBlocked ? "IP aggregate" : "fingerprint",
                             rule.endpointType(), clientIp, httpRequest.getRequestURI());
-                    sendRateLimitExceededResponse(httpResponse, rule.config().windowMinutes());
+                    sendRateLimitExceededResponse(httpResponse, retryWindowMinutes);
                     return;
                 }
                 break; // at most one rule matches per request
@@ -84,6 +118,25 @@ public class RateLimitFilter implements Filter {
         } catch (IOException | ServletException e) {
             ExceptionUtils.handleClientDisconnect(e, LOGGER, httpRequest);
         }
+    }
+
+    /**
+     * Builds a client fingerprint by hashing the combination of client IP, User-Agent, and Accept-Language headers.
+     *
+     * @param clientIp the normalized client IP address
+     * @param request  the HTTP servlet request
+     * @return a 24-character hex string fingerprint or the raw client IP if hashing fails
+     */
+    String buildClientFingerprint(String clientIp, HttpServletRequest request) {
+        String userAgent = Objects.toString(request.getHeader(AppConstants.USER_AGENT_HEADER), "");
+        String acceptLang = Objects.toString(request.getHeader(AppConstants.ACCEPT_LANGUAGE_HEADER), "");
+        String raw = clientIp + "|" + userAgent + "|" + acceptLang;
+        Optional<MessageDigest> digestHolder = SHA256_DIGEST.get();
+        if (digestHolder.isEmpty()) {
+            return clientIp;
+        }
+        byte[] hash = digestHolder.get().digest(raw.getBytes(StandardCharsets.UTF_8));
+        return HexFormat.of().formatHex(hash).substring(0, 24);
     }
 
     /**
@@ -180,42 +233,68 @@ public class RateLimitFilter implements Filter {
                 clientIp = (xRealIp != null && !xRealIp.trim().isEmpty()) ? xRealIp.trim() : request.getRemoteAddr();
             }
         }
-        // Normalize IP address to prevent key duplication (trim and lowercase)
         return clientIp.trim().toLowerCase();
     }
 
     /**
-     * Builds a composite rate limit key from IP address and endpoint type.
-     * This isolates rate limits per endpoint type (blog vs contact).
+     * Builds a namespaced rate-limit cache key.
      *
-     * @param clientIp     the client IP address
-     * @param endpointType the endpoint type (BLOG or CONTACT)
-     * @return the composite rate limit key
+     * @param bucketType   the bucket type ("fp" for fingerprint or "ip" for IP aggregate)
+     * @param identifier   the bucket identifier (fingerprint hash or client IP)
+     * @param endpointType the endpoint type (e.g., "contact", "blog_ask") to allow separate limits per endpoint
+     * @return a composite key in the format "{bucketType}:{identifier}:{endpointType}"
      */
-    private String buildRateLimitKey(String clientIp, String endpointType) {
-        return clientIp + ":" + endpointType;
+    private String buildRateLimitKey(String bucketType, String identifier, String endpointType) {
+        return bucketType + ":" + identifier + ":" + endpointType;
     }
 
     /**
-     * Checks if the rate limit has been exceeded for the given rate limit key.
+     * Checks the sliding window for the given key and records the current request if allowed.
      *
-     * @param rateLimitKey the composite rate limit key (IP:ENDPOINT_TYPE)
+     * @param rateLimitKey the composite rate limit key (fingerprint:ENDPOINT_TYPE)
      * @param config       the rate limit configuration for the endpoint
-     * @return true if rate limit exceeded, false if allowed
+     * @return a RateLimitCheckResult
      */
-    private boolean isRateLimitExceeded(String rateLimitKey, RateLimitConfig config) {
+    private RateLimitCheckResult checkRateLimit(String rateLimitKey, RateLimitConfig config) {
         long currentTime = Instant.now().toEpochMilli();
-        long windowStart = currentTime - (config.windowMinutes() * 60_000L);
+        long windowDurationMs = config.windowMinutes() * 60_000L;
+        long windowStart = currentTime - windowDurationMs;
         RequestWindow window = requestCache.computeIfAbsent(rateLimitKey, k -> new RequestWindow());
-        // Synchronize on the window object to ensure thread safety for this IP's request tracking
         synchronized (window) {
             window.removeOldRequests(windowStart);
-            if (window.getRequestCount() >= config.maxRequests()) {
-                return true;
+            int currentCount = window.getRequestCount();
+            if (currentCount >= config.maxRequests()) {
+                long resetEpochSeconds = computeResetEpochSeconds(window, currentTime, windowDurationMs);
+                return new RateLimitCheckResult(false, 0, resetEpochSeconds);
             }
             window.addRequest(currentTime);
-            return false;
+            int remaining = config.maxRequests() - currentCount - 1;
+            long resetEpochSeconds = computeResetEpochSeconds(window, currentTime, windowDurationMs);
+            return new RateLimitCheckResult(true, remaining, resetEpochSeconds);
         }
+    }
+
+    /**
+     * Computes the epoch-second timestamp at which the current sliding window will reset.
+     *
+     * @param window           the RequestWindow containing the timestamps of recent requests
+     * @param currentTimeMs    the current time in milliseconds
+     * @param windowDurationMs the duration of the rate limit window in milliseconds
+     * @return the epoch-second timestamp when the window will reset
+     */
+    private long computeResetEpochSeconds(RequestWindow window, long currentTimeMs, long windowDurationMs) {
+        long oldestTimestamp = window.getOldestTimestamp();
+        long resetMs = (oldestTimestamp > 0) ? oldestTimestamp + windowDurationMs : currentTimeMs + windowDurationMs;
+        return resetMs / 1000;
+    }
+
+    /**
+     * Sets the X-RateLimit-* headers on the response to inform the client of their current rate limit status.
+     */
+    private void setRateLimitHeaders(HttpServletResponse response, int limit, int remaining, long resetEpochSeconds) {
+        response.setHeader(AppConstants.X_RATE_LIMIT_LIMIT, String.valueOf(limit));
+        response.setHeader(AppConstants.X_RATE_LIMIT_REMAINING, String.valueOf(remaining));
+        response.setHeader(AppConstants.X_RATE_LIMIT_RESET, String.valueOf(resetEpochSeconds));
     }
 
     /**
@@ -263,19 +342,17 @@ public class RateLimitFilter implements Filter {
     }
 
     /**
-     * Calculates the maximum window duration in minutes across all configured rate limits.
-     *
-     * @return the maximum window duration in minutes
+     * Determines the maximum window duration across all configured rules to optimize cache cleanup.
      */
     private long getMaxWindowMinutes() {
         return rules.stream()
-                .mapToLong(r -> r.config().windowMinutes())
+                .mapToLong(r -> Math.max(r.fingerprintConfig().windowMinutes(), r.ipConfig().windowMinutes()))
                 .max()
                 .orElse(0L);
     }
 
     /**
-     * Represents a sliding window of requests for a specific IP address.
+     * Sliding window of request timestamps for a single rate-limit bucket.
      */
     private static class RequestWindow {
 
@@ -295,16 +372,34 @@ public class RateLimitFilter implements Filter {
             return requests.size();
         }
 
+        /**
+         * Returns the timestamp of the oldest request in the window, or {@code 0} if empty.
+         */
+        long getOldestTimestamp() {
+            Long oldest = requests.peek();
+            return oldest != null ? oldest : 0L;
+        }
+
     }
 
+    /**
+     * Holds the per-endpoint rate-limit thresholds.
+     */
     private record RateLimitConfig(int maxRequests, int windowMinutes) {
     }
 
     /**
-     * Associates an endpoint-matching predicate with its rate-limit configuration and key name.
+     * Result of a single rate-limit check, carrying enough information to populate X-RateLimit-* response headers.
+     */
+    record RateLimitCheckResult(boolean allowed, int remaining, long resetEpochSeconds) {
+    }
+
+    /**
+     * Associates an endpoint-matching predicate with its dual-bucket rate-limit configuration and key name.
      * Add a new instance in the constructor to rate-limit an additional endpoint.
      */
-    private record EndpointRule(Predicate<HttpServletRequest> matcher, String endpointType, RateLimitConfig config) {
+    private record EndpointRule(Predicate<HttpServletRequest> matcher, String endpointType,
+                                RateLimitConfig fingerprintConfig, RateLimitConfig ipConfig) {
     }
 
 }
