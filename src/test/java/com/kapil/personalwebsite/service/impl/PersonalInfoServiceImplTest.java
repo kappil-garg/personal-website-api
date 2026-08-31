@@ -12,9 +12,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -31,11 +29,17 @@ class PersonalInfoServiceImplTest {
     void getPersonalInfo_ShouldReturnRepositoryValue() {
         PersonalInfo personalInfo = createPersonalInfo("existing-id", "Existing Name");
         when(personalInfoRepository.findFirstByOrderByIdAsc()).thenReturn(Optional.of(personalInfo));
-
         Optional<PersonalInfo> result = personalInfoService.getPersonalInfo();
-
         assertTrue(result.isPresent());
         assertSame(personalInfo, result.get());
+        verify(personalInfoRepository).findFirstByOrderByIdAsc();
+    }
+
+    @Test
+    void getPersonalInfo_WhenNoRecordExists_ShouldReturnEmpty() {
+        when(personalInfoRepository.findFirstByOrderByIdAsc()).thenReturn(Optional.empty());
+        Optional<PersonalInfo> result = personalInfoService.getPersonalInfo();
+        assertTrue(result.isEmpty());
         verify(personalInfoRepository).findFirstByOrderByIdAsc();
     }
 
@@ -45,16 +49,12 @@ class PersonalInfoServiceImplTest {
         PersonalInfo incoming = createPersonalInfo("new-id", "Updated Name");
         incoming.setTagline("Updated tagline");
         incoming.setEmail("updated@example.com");
-
         when(personalInfoRepository.findFirstByOrderByIdAsc()).thenReturn(Optional.of(existing));
         when(personalInfoRepository.save(existing)).thenReturn(existing);
-
         PersonalInfo result = personalInfoService.updatePersonalInfo(incoming);
-
         ArgumentCaptor<PersonalInfo> captor = ArgumentCaptor.forClass(PersonalInfo.class);
         verify(personalInfoRepository).save(captor.capture());
         PersonalInfo saved = captor.getValue();
-
         assertSame(existing, result);
         assertSame(existing, saved);
         assertEquals("existing-id", saved.getId());
@@ -73,9 +73,7 @@ class PersonalInfoServiceImplTest {
         PersonalInfo incoming = createPersonalInfo("new-id", "New Name");
         when(personalInfoRepository.findFirstByOrderByIdAsc()).thenReturn(Optional.empty());
         when(personalInfoRepository.save(incoming)).thenReturn(incoming);
-
         PersonalInfo result = personalInfoService.updatePersonalInfo(incoming);
-
         assertSame(incoming, result);
         verify(personalInfoRepository).save(incoming);
     }

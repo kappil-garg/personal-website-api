@@ -6,20 +6,14 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 class BlogResponseMapperTest {
 
     @Test
     void buildBlogResponse_WhenBlogExists_ShouldReturnSuccessResponse() {
         Blog blog = new Blog("Title", "Content", "test-slug");
-
         ResponseEntity<ApiResponse<Blog>> response = BlogResponseMapper.buildBlogResponse("test-slug", blog);
-
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
         assertTrue(response.getBody().isSuccess());
@@ -32,7 +26,6 @@ class BlogResponseMapperTest {
     @Test
     void buildBlogResponse_WhenBlogIsMissing_ShouldReturnNotFoundResponse() {
         ResponseEntity<ApiResponse<Blog>> response = BlogResponseMapper.buildBlogResponse("missing-slug", null);
-
         assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
         assertNotNull(response.getBody());
         assertFalse(response.getBody().isSuccess());
@@ -44,9 +37,7 @@ class BlogResponseMapperTest {
     @Test
     void buildBlogByIdResponse_WhenBlogExists_ShouldReturnSuccessResponse() {
         Blog blog = new Blog("Title", "Content", "test-slug");
-
         ResponseEntity<ApiResponse<Blog>> response = BlogResponseMapper.buildBlogByIdResponse("123", blog);
-
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
         assertTrue(response.getBody().isSuccess());
@@ -57,7 +48,6 @@ class BlogResponseMapperTest {
     @Test
     void buildBlogByIdResponse_WhenBlogIsMissing_ShouldReturnNotFoundResponse() {
         ResponseEntity<ApiResponse<Blog>> response = BlogResponseMapper.buildBlogByIdResponse("123", null);
-
         assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
         assertNotNull(response.getBody());
         assertFalse(response.getBody().isSuccess());

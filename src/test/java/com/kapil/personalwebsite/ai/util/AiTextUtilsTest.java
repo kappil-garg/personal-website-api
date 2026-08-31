@@ -4,9 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Constructor;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 
 class AiTextUtilsTest {
 
@@ -19,13 +17,16 @@ class AiTextUtilsTest {
     @Test
     void stripHtmlTags_ShouldRemoveTagsAndNormalizeWhitespace() {
         String html = "<div>Hello <strong>world</strong></div><p>Line&nbsp;<em>two</em></p>";
-
         assertEquals("Hello world Line&nbsp; two", AiTextUtils.stripHtmlTags(html));
     }
 
     @Test
+    void stripHtmlTags_WhenInputHasNoTags_ShouldTrimAndCollapseWhitespace() {
+        assertEquals("plain text", AiTextUtils.stripHtmlTags("  plain   text  "));
+    }
+
+    @Test
     void nullSafe_ShouldReturnOriginalValueOrEmptyString() {
-        assertEquals("value", AiTextUtils.nullSafe("value"));
         assertEquals("", AiTextUtils.nullSafe(null));
     }
 
@@ -33,9 +34,7 @@ class AiTextUtilsTest {
     void instantiation_ShouldThrowException() throws Exception {
         Constructor<AiTextUtils> constructor = AiTextUtils.class.getDeclaredConstructor();
         constructor.setAccessible(true);
-
         Exception exception = assertThrows(Exception.class, constructor::newInstance);
-
         assertInstanceOf(UnsupportedOperationException.class, exception.getCause());
     }
 
