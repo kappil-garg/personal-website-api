@@ -31,6 +31,7 @@ public class PortfolioChatServiceImpl implements PortfolioChatService {
 
     private final PortfolioRagService portfolioRagService;
     private final ObjectProvider<PortfolioEmbeddingRetrievalService> embeddingRetrievalServiceProvider;
+    private final ObjectProvider<PortfolioChunkRelevanceService> chunkRelevanceServiceProvider;
 
     private final ChatClient chatClient;
 
@@ -39,9 +40,11 @@ public class PortfolioChatServiceImpl implements PortfolioChatService {
 
     public PortfolioChatServiceImpl(PortfolioRagService portfolioRagService,
                                     ObjectProvider<PortfolioEmbeddingRetrievalService> embeddingRetrievalServiceProvider,
+                                    ObjectProvider<PortfolioChunkRelevanceService> chunkRelevanceServiceProvider,
                                     ChatClient.Builder chatClientBuilder) {
         this.portfolioRagService = portfolioRagService;
         this.embeddingRetrievalServiceProvider = embeddingRetrievalServiceProvider;
+        this.chunkRelevanceServiceProvider = chunkRelevanceServiceProvider;
         this.chatClient = chatClientBuilder
                 .defaultSystem(PortfolioAiConstants.CHAT_SYSTEM_PROMPT)
                 .build();
@@ -69,6 +72,10 @@ public class PortfolioChatServiceImpl implements PortfolioChatService {
                 ? request.projectId().trim() : null;
         PortfolioEmbeddingRetrievalService retrieval = embeddingRetrievalServiceProvider.getIfAvailable();
         List<Document> relevantDocs = fetchRelevantDocuments(message, projectId, retrieval);
+        PortfolioChunkRelevanceService relevanceService = chunkRelevanceServiceProvider.getIfAvailable();
+        if (relevanceService != null && !relevantDocs.isEmpty()) {
+            relevantDocs = relevanceService.filterRelevantDocuments(message, relevantDocs);
+        }
         String context = buildContext(portfolioRagService.buildPortfolioContextSummary(), relevantDocs);
         String userMessage = PortfolioAiConstants.CHAT_USER_MESSAGE_TEMPLATE.formatted(context, message);
         String reply = chatClient.prompt().user(userMessage).call().content();
